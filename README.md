@@ -132,46 +132,13 @@ The tool uses different colors to make it easier to identify different types of 
 
 ## 📚 Examples
 
-### Example 1: Basic Email Notification
+### Example 1: Email Notification
 
-```json
-{
-  "type": "EMAIL",
-  "notificationType": "WELCOME",
-  "destinations": ["user@example.com"],
-  "content": {
-    "emailTemplate": "WELCOME",
-    "data": {
-      "name": "John",
-      "activationLink": "https://example.com/activate"
-    }
-  }
-}
-```
+![Email Notification Example](images/email.png)
 
-### Example 2: Nested JSON Structure
+### Example 2: Notification with Nested Structure
 
-```json
-{
-  "type": "NOTIFICATION",
-  "data": {
-    "user": {
-      "id": 12345,
-      "profile": {
-        "name": "Alice",
-        "preferences": {
-          "theme": "dark",
-          "notifications": true
-        }
-      }
-    },
-    "items": [
-      {"id": 1, "name": "Item 1"},
-      {"id": 2, "name": "Item 2"}
-    ]
-  }
-}
-```
+![Notification Example](images/notification.png)
 
 ## 🤝 Contributing
 
