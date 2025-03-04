@@ -6,10 +6,6 @@
   <img src="https://img.shields.io/badge/Google%20Cloud-Pub%2FSub-4285F4" alt="Google Cloud Pub/Sub">
 </div>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/pedroid999/pubsub-pretty-logger/main/docs/screenshot.png" alt="Screenshot" width="800">
-</p>
-
 A beautiful, colorful, and dynamic tool for monitoring Google Cloud Pub/Sub messages in real-time. Transform your console output from plain text to a structured, color-coded display that makes debugging and monitoring a breeze.
 
 ## ✨ Features
