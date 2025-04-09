@@ -39,4 +39,22 @@ secrets/
 .vscode/
 *.swp
 *.swo
+.DS_Store
+
+# FastAPI/Vue.js
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+.env.local
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+.vscode/
+.idea/
 .DS_Store 

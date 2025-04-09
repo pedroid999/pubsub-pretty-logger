@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pub/Sub Pretty Logger</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', path='favicon.ico') }}" type="image/x-icon">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/tokyo-night-dark.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+    
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3.3.11/dist/vue.global.prod.js"></script>
+    
+    <!-- Highlight.js for syntax highlighting (complete build) -->
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- jsoneditor -->
+    <link href="https://cdn.jsdelivr.net/npm/jsoneditor@10.0.0/dist/jsoneditor.min.css" rel="stylesheet" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/jsoneditor@10.0.0/dist/jsoneditor.min.js"></script>
+    
+    <!-- Setup Vue to use different delimiters to avoid conflict with Jinja2 -->
+    <script>
+        window.vueDelimiters = {
+            delimiters: ['${', '}']
+        };
+    </script>
+</head>
+<body>
+    <div id="app">
+        <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#">
+                <i class="fas fa-broadcast-tower me-2"></i> Pub/Sub Pretty Logger
+            </a>
+            <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" 
+                    @click="toggleSidebar" aria-controls="sidebarMenu" 
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="navbar-nav flex-row d-md-none">
+                <div class="nav-item text-nowrap">
+                    <button class="nav-link px-3 btn" @click="clearMessages">
+                        <i class="fas fa-trash-alt"></i> Clear
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Sidebar -->
+                <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" :class="{ show: sidebarVisible }">
+                    <div class="position-sticky pt-3 sidebar-sticky">
+                        <div class="px-3 mb-3">
+                            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-2 text-body-secondary text-uppercase">
+                                <span>Connection</span>
+                            </h6>
+                            <form @submit.prevent="connectToPubSub">
+                                <div class="mb-3">
+                                    <label for="projectId" class="form-label">Project ID</label>
+                                    <input type="text" class="form-control" id="projectId" v-model="config.project_id" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="subscriptionId" class="form-label">Subscription ID</label>
+                                    <input type="text" class="form-control" id="subscriptionId" v-model="config.subscription_id" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100" :disabled="isConnecting">
+                                    <i class="fas fa-plug me-2"></i>
+                                    <span v-if="isConnected">Connected</span>
+                                    <span v-else-if="isConnecting">Connecting...</span>
+                                    <span v-else>Connect</span>
+                                </button>
+                            </form>
+                            
+                            <div v-if="connectionError" class="alert alert-danger mt-3">
+                                ${ connectionError }
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="px-3">
+                            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase">
+                                <span>Controls</span>
+                            </h6>
+                            
+                            <div class="btn-group w-100 mb-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @click="clearMessages">
+                                    <i class="fas fa-trash-alt me-2"></i>Clear
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @click="pauseMessages = !pauseMessages">
+                                    <i class="fas" :class="pauseMessages ? 'fa-play' : 'fa-pause'"></i>
+                                    ${ pauseMessages ? 'Resume' : 'Pause' }
+                                </button>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="autoScrollSwitch" v-model="autoScroll">
+                                <label class="form-check-label" for="autoScrollSwitch">Auto-scroll</label>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="maxMessages" class="form-label">Max messages (0 = unlimited)</label>
+                                <input type="number" class="form-control form-control-sm" id="maxMessages" v-model.number="maxMessages" min="0">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="filterInput" class="form-label">Filter messages</label>
+                                <input type="text" class="form-control form-control-sm" id="filterInput" 
+                                       v-model="messageFilter" placeholder="Filter text">
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="px-3">
+                            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-body-secondary text-uppercase">
+                                <span>Status</span>
+                            </h6>
+                            
+                            <div class="mb-1">
+                                <span class="badge" :class="isConnected ? 'bg-success' : 'bg-secondary'">
+                                    ${ isConnected ? 'Connected' : 'Disconnected' }
+                                </span>
+                                <small class="text-body-secondary ms-2">Messages: ${ messages.length }</small>
+                            </div>
+                            
+                            <div v-if="isConnected" class="small text-truncate">
+                                <strong>Project:</strong> ${ config.project_id }<br>
+                                <strong>Subscription:</strong> ${ config.subscription_id }
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+
+                <!-- Main content -->
+                <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">
+                            <i class="fas fa-broadcast-tower me-2"></i> 
+                            Message Log
+                        </h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @click="clearMessages">
+                                    <i class="fas fa-trash-alt me-1"></i> Clear
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @click="pauseMessages = !pauseMessages">
+                                    <i class="fas" :class="pauseMessages ? 'fa-play' : 'fa-pause'"></i>
+                                    ${ pauseMessages ? 'Resume' : 'Pause' }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Message area -->
+                    <div class="messages-container" id="messages-container" ref="messagesContainer">
+                        <div v-if="messages.length === 0" class="empty-state">
+                            <div class="text-center p-5">
+                                <i class="fas fa-inbox fa-4x mb-3 text-secondary"></i>
+                                <h3>No messages yet</h3>
+                                <p class="text-secondary">Connect to a Pub/Sub subscription to see messages here.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Navigation buttons for messages -->
+                        <div v-if="messages.length > 0" class="message-navigation">
+                            <button class="btn btn-sm btn-outline-primary" @click="navigateMessage(-1)" title="Previous message">
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </button>
+                            <span class="message-counter">${ currentMessageIndex + 1 } / ${ messages.length }</span>
+                            <button class="btn btn-sm btn-outline-primary" @click="navigateMessage(1)" title="Next message">
+                                Next <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                        
+                        <div v-for="(msg, index) in filteredMessages" :key="index" class="message-card">
+                            <div class="message-header" @click="toggleMessageExpanded(index)">
+                                <div class="message-info">
+                                    <span class="message-timestamp">${ formatTimestamp(msg.data.publish_time) }</span>
+                                    <span class="message-type" v-if="getMessageType(msg)">
+                                        ${ getMessageType(msg) }
+                                    </span>
+                                </div>
+                                <div class="message-actions">
+                                    <button class="btn btn-sm btn-link" @click.stop="copyMessageToClipboard(msg)">
+                                        <i class="fas fa-clipboard"></i>
+                                    </button>
+                                    <i class="fas" :class="isMessageExpanded(index) ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="message-content" v-if="isMessageExpanded(index)">
+                                <div v-if="Object.keys(msg.data.attributes || {}).length > 0" class="message-attributes mb-2">
+                                    <div class="attributes-header">
+                                        <strong>Attributes:</strong>
+                                    </div>
+                                    <table class="attributes-table">
+                                        <tr v-for="(value, key) in msg.data.attributes" :key="key">
+                                            <td class="attribute-key">${ key }</td>
+                                            <td class="attribute-value">${ value }</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                
+                                <div class="message-data">
+                                    <div class="data-header">
+                                        <strong>Data:</strong>
+                                    </div>
+                                    <div class="json-view" :id="'json-' + index"></div>
+                                </div>
+                                
+                                <div class="message-footer">
+                                    <small>Message ID: ${ msg.data.message_id }</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+        
+        <!-- Toast notification -->
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div class="toast" ref="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <i class="fas" :class="toastIcon"></i>
+                    <strong class="me-auto ms-2">${ toastTitle }</strong>
+                    <button type="button" class="btn-close" @click="hideToast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${ toastMessage }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Load our custom Vue.js app -->
+    <script src="{{ url_for('static', path='js/app.js') }}"></script>
+</body>
+</html> 
