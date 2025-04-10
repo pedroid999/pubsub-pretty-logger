@@ -18,6 +18,10 @@ A beautiful, colorful, and dynamic tool for monitoring Google Cloud Pub/Sub mess
 - 🌐 **Cross-Platform**: Works on Windows, macOS, and Linux
 - 🖥️ **Web Interface**: Beautiful and intuitive web interface with Vue.js and FastAPI
 
+## 🏗️ Technical Architecture
+
+For detailed information about the application's technical architecture, please see [system_architecture.md](system_architecture.md).
+
 ## 📋 Prerequisites
 
 - Python 3.7+
@@ -108,6 +112,24 @@ If you encounter problems or want to start with a completely clean setup:
    - Verify your Google Cloud permissions
    - Ensure your Pub/Sub subscription exists and is accessible
    - Make sure all dependencies are installed correctly
+
+## 🐛 Debugging with VS Code
+
+The project includes a preconfigured VS Code `launch.json` file that allows you to easily debug the application:
+
+1. Open the project in Visual Studio Code
+2. Go to the Run and Debug view (Ctrl+Shift+D or Cmd+Shift+D)
+3. Select one of the following debug configurations from the dropdown:
+   - **Python: CLI Mode** - Debug the command-line interface
+   - **Python: Web Interface** - Debug the web interface on default port 8000
+   - **Python: Web Interface (custom port)** - Debug the web interface on port 8080
+   - **Python: Run Web Script** - Debug using the dedicated web script
+
+4. Click the green play button or press F5 to start debugging
+5. You can set breakpoints by clicking in the gutter (left of line numbers)
+6. Use the debug toolbar to control execution (pause, step over, step into, etc.)
+
+The debug configuration automatically sets the Python path to include the project root, so imports will work correctly during debugging sessions.
 
 ## ⚙️ Configuration
 
