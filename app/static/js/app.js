@@ -28,12 +28,48 @@ const app = createApp({
         const messagesContainer = ref(null);
         const jsonEditors = ref({});
         const currentMessageIndex = ref(0);
+        const darkMode = ref(false);
         
         // Toast refs
         const toast = ref(null);
         const toastTitle = ref('');
         const toastMessage = ref('');
         const toastIcon = ref('fa-info-circle');
+
+        // Dark Mode Methods
+        const toggleDarkMode = () => {
+            darkMode.value = !darkMode.value;
+            if (darkMode.value) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+            // Save preference to localStorage
+            localStorage.setItem('darkMode', darkMode.value ? 'true' : 'false');
+            
+            // Update JSON editors theme if they exist
+            Object.keys(jsonEditors.value).forEach(index => {
+                if (jsonEditors.value[index]) {
+                    try {
+                        const editorOptions = darkMode.value ? 
+                            { theme: 'ace/theme/monokai' } : 
+                            { theme: 'ace/theme/github' };
+                        jsonEditors.value[index].setOptions(editorOptions);
+                    } catch (error) {
+                        console.warn('Error updating JSON editor theme:', error);
+                    }
+                }
+            });
+        };
+        
+        // Load dark mode preference on start
+        const loadDarkModePreference = () => {
+            const savedMode = localStorage.getItem('darkMode');
+            if (savedMode === 'true') {
+                darkMode.value = true;
+                document.body.classList.add('dark-mode');
+            }
+        };
 
         // Methods
         const loadDefaultConfig = async () => {
@@ -295,36 +331,46 @@ const app = createApp({
         };
 
         const initJsonEditor = (index, data) => {
+            // Create a container for the editor
             const container = document.getElementById(`json-${index}`);
-            if (!container) return;
             
-            // Only create if not already created
-            if (!jsonEditors.value[`json-${index}`]) {
-                try {
-                    const options = {
-                        mode: 'view',
-                        modes: ['view', 'form', 'code', 'text', 'tree'],
-                        onModeChange: function(newMode) {
-                            console.log('Mode changed to', newMode);
-                        },
-                        // Increase the height of the editor to fill the container
-                        height: '60vh'
-                    };
-                    
-                    const editor = new JSONEditor(container, options);
-                    editor.set(data);
-                    
-                    jsonEditors.value[`json-${index}`] = editor;
-                } catch (e) {
-                    console.error('Error initializing JSON editor:', e);
-                    container.textContent = JSON.stringify(data, null, 2);
-                    
-                    // Apply syntax highlighting to fallback content
-                    if (typeof hljs !== 'undefined') {
-                        container.classList.add('hljs', 'language-json');
-                        hljs.highlightElement(container);
+            if (!container) {
+                console.error(`Container for JSON editor #${index} not found`);
+                return;
+            }
+            
+            try {
+                // Create the editor
+                const options = {
+                    mode: 'view',
+                    modes: ['view', 'tree'],
+                    theme: darkMode.value ? 'ace/theme/monokai' : 'ace/theme/github'
+                };
+                
+                const editor = new JSONEditor(container, options);
+                
+                // Set the data
+                editor.set(data);
+                
+                // Store the editor reference
+                jsonEditors.value[index] = editor;
+                
+                // Force a redraw to ensure proper rendering
+                setTimeout(() => {
+                    if (jsonEditors.value[index]) {
+                        jsonEditors.value[index].refresh();
                     }
-                }
+                }, 100);
+            } catch (error) {
+                console.error('Failed to initialize JSONEditor:', error);
+                
+                // Fallback to syntax-highlighted pre/code
+                container.innerHTML = '';
+                container.classList.add('hljs');
+                container.textContent = JSON.stringify(data, null, 2);
+                
+                // Apply syntax highlighting
+                hljs.highlightElement(container);
             }
         };
 
@@ -519,6 +565,9 @@ const app = createApp({
             } else {
                 console.warn('highlight.js is not available');
             }
+            
+            // Load dark mode preference
+            loadDarkModePreference();
         });
 
         // Return all reactive data and methods for the template
@@ -538,8 +587,9 @@ const app = createApp({
             toastTitle,
             toastMessage,
             toastIcon,
-            filteredMessages,
+            darkMode,
             currentMessageIndex,
+            filteredMessages,
             
             connectToPubSub,
             clearMessages,
@@ -553,7 +603,8 @@ const app = createApp({
             hideToast,
             startMessagePolling,
             stopMessagePolling,
-            navigateMessage
+            navigateMessage,
+            toggleDarkMode
         };
     }
 }).mount('#app'); 

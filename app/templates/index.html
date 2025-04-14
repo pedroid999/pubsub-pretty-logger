@@ -45,8 +45,15 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             
-            <div class="navbar-nav flex-row d-md-none">
-                <div class="nav-item text-nowrap">
+            <div class="navbar-nav flex-row">
+                <!-- Theme Toggle Button -->
+                <div class="nav-item me-3">
+                    <button class="theme-toggle btn" @click="toggleDarkMode">
+                        <i class="icon fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
+                        <span class="d-none d-md-inline">${ darkMode ? 'Light Mode' : 'Dark Mode' }</span>
+                    </button>
+                </div>
+                <div class="nav-item text-nowrap d-md-none">
                     <button class="nav-link px-3 btn" @click="clearMessages">
                         <i class="fas fa-trash-alt"></i> Clear
                     </button>
