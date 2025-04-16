@@ -246,6 +246,27 @@ def get_connection_status():
     
     return {"connections": connections, "debug_info": debug_info}
 
+@router.delete("/disconnect/{client_id}")
+def disconnect_from_pubsub(client_id: str):
+    """Disconnect from a Pub/Sub subscription."""
+    if client_id in message_queues:
+        # Close all websockets associated with this client_id
+        for ws, cid in list(websocket_to_client.items()):
+            if cid == client_id:
+                try:
+                    ws.close(code=1000, reason="Subscription disconnected")
+                except Exception:
+                    pass
+                if ws in active_connections:
+                    active_connections.remove(ws)
+                del websocket_to_client[ws]
+        
+        # Clean up queues
+        del message_queues[client_id]
+        return {"status": "disconnected", "client_id": client_id}
+    else:
+        raise HTTPException(status_code=404, detail="Client ID not found")
+
 @router.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """WebSocket endpoint for receiving Pub/Sub messages in real-time."""

@@ -175,6 +175,23 @@ main {
     background-color: var(--danger-color);
 }
 
+.message-subscription {
+    margin-left: 5px;
+}
+
+.message-subscription .badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.subscription-item {
+    transition: background-color 0.2s ease;
+}
+
+.subscription-item:hover {
+    background-color: var(--highlight-bg);
+}
+
 .message-actions {
     display: flex;
     align-items: center;

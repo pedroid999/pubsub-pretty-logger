@@ -164,7 +164,11 @@ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/credentials.json
 ### 3. Using command line arguments
 
 ```bash
+# Single subscription
 python pubsub_logger.py --project-id=your-project-id --subscription-id=your-subscription-id
+
+# Multiple subscriptions
+python pubsub_logger.py --subscriptions project1:subscription1 project2:subscription2
 ```
 
 ## 🖥️ Usage
@@ -192,7 +196,11 @@ python pubsub_logger.py --web --port=8080
 ### With command line options
 
 ```bash
+# Single subscription
 python pubsub_logger.py --project-id=your-project-id --subscription-id=your-subscription-id
+
+# Multiple subscriptions
+python pubsub_logger.py --subscriptions project1:subscription1 project2:subscription2
 ```
 
 ### Using a specific .env file
@@ -213,6 +221,7 @@ python pubsub_logger.py --no-color
 |--------|-------------|
 | `--project-id` | Google Cloud project ID |
 | `--subscription-id` | Pub/Sub subscription ID |
+| `--subscriptions` | Multiple Pub/Sub subscriptions in format: project1:subscription1 project2:subscription2 |
 | `--env-file` | Path to a specific .env file |
 | `--no-color` | Disable colored output (CLI mode only) |
 | `--web` | Start the web interface instead of CLI mode |
@@ -240,6 +249,8 @@ The web interface provides a modern, user-friendly way to monitor Pub/Sub messag
 - 🔄 **Auto-scroll**: Automatic scrolling to latest messages
 - 🌳 **JSON Tree View**: Interactive JSON viewer for message content
 - 📊 **Message Statistics**: Track message counts and flow
+- 🌓 **Dark Mode**: Toggle between light and dark themes for comfortable viewing in any environment
+- 🔗 **Multiple Subscriptions**: Connect to multiple Pub/Sub subscriptions simultaneously
 
 ### Web Interface Installation and Setup
 
@@ -281,10 +292,32 @@ To use the web interface, follow these steps:
 5. In the web interface:
    - Enter your Project ID and Subscription ID (or they'll be auto-filled from your .env file)
    - Click "Connect" to start receiving messages
+   - Add additional subscriptions without disconnecting existing ones
+   - Filter messages by subscription source
    - Use the sidebar controls to filter, pause/resume, or clear messages
    - Click on any message to expand and view its contents
+   - Toggle between light and dark mode using the switch in the header
 
 The web server features hot reloading, so any changes to the code will automatically restart the server.
+
+### Dark Mode
+
+The web interface includes a dark mode feature for comfortable viewing in low-light environments:
+
+- 🔄 **Theme Toggle**: Switch between light and dark themes using the toggle in the header
+- 💾 **Preference Saving**: Your theme preference is saved and persists between sessions
+- 🎨 **Consistent Styling**: All UI components and JSON editor are styled appropriately for both themes
+- 🖥️ **Responsive**: Dark mode works seamlessly across all device sizes
+
+### Multiple Subscriptions
+
+Connect to and monitor multiple Pub/Sub subscriptions simultaneously:
+
+- ➕ **Add Subscriptions**: Add new subscriptions without disconnecting existing ones
+- 🏷️ **Subscription Labels**: Each message displays which subscription it came from
+- 🔍 **Subscription Filtering**: Filter the message view by subscription
+- 🔌 **Individual Disconnect**: Remove specific subscriptions without affecting others
+- 💻 **CLI Support**: Use multiple subscriptions in command-line mode as well
 
 ### Web Interface Screenshots
 

@@ -15,11 +15,10 @@ const app = createApp({
         });
         const messages = ref([]);
         const expandedMessages = ref({});
-        const isConnected = ref(false);
         const isConnecting = ref(false);
         const connectionError = ref('');
-        const socketInstance = ref(null);
-        const clientId = ref('');
+        const socketInstances = ref({});  // Map of client_id to WebSocket instance
+        const activeSubscriptions = ref([]); // Array of subscription objects
         const autoScroll = ref(true);
         const pauseMessages = ref(false);
         const maxMessages = ref(100);
@@ -83,8 +82,10 @@ const app = createApp({
             }
         };
 
+        const showNewSubscriptionForm = ref(true);
+
         const connectToPubSub = async () => {
-            if (isConnected.value || isConnecting.value) return;
+            if (isConnecting.value) return;
             
             isConnecting.value = true;
             connectionError.value = '';
@@ -104,13 +105,35 @@ const app = createApp({
                 const data = await response.json();
                 
                 if (response.ok) {
-                    clientId.value = data.client_id;
-                    isConnected.value = true;
+                    const client_id = data.client_id;
+                    
+                    // Create subscription object
+                    const subscription = {
+                        client_id: client_id,
+                        project_id: config.value.project_id,
+                        subscription_id: config.value.subscription_id,
+                        connected: true
+                    };
+                    
+                    // Add to active subscriptions
+                    activeSubscriptions.value.push(subscription);
+                    
                     showToast('Connected', 'Successfully connected to Pub/Sub', 'fa-check-circle');
+                    
                     // Try WebSocket first
-                    initWebSocket();
+                    initWebSocket(client_id, subscription);
+                    
                     // Also start polling as a fallback
-                    startMessagePolling();
+                    startMessagePolling(client_id, subscription);
+                    
+                    // Hide the form after successful connection
+                    showNewSubscriptionForm.value = false;
+                    
+                    // Clear the form
+                    config.value = {
+                        project_id: '',
+                        subscription_id: ''
+                    };
                 } else {
                     connectionError.value = data.detail || 'Failed to connect';
                     showToast('Connection Error', connectionError.value, 'fa-exclamation-circle');
@@ -123,106 +146,165 @@ const app = createApp({
             }
         };
 
-        const initWebSocket = () => {
-            if (socketInstance.value) {
-                console.log('Closing existing WebSocket connection');
-                socketInstance.value.close();
+        const disconnectSubscription = async (client_id) => {
+            try {
+                // Close WebSocket if it exists
+                if (socketInstances.value[client_id]) {
+                    socketInstances.value[client_id].close();
+                    delete socketInstances.value[client_id];
+                }
+                
+                // Call the disconnect API
+                const response = await fetch(`/api/disconnect/${client_id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Remove from active subscriptions
+                    const index = activeSubscriptions.value.findIndex(sub => sub.client_id === client_id);
+                    if (index !== -1) {
+                        activeSubscriptions.value.splice(index, 1);
+                    }
+                    
+                    showToast('Disconnected', 'Successfully disconnected from Pub/Sub subscription', 'fa-times-circle');
+                } else {
+                    showToast('Error', data.detail || 'Failed to disconnect', 'fa-exclamation-circle');
+                }
+            } catch (error) {
+                console.error('Error disconnecting:', error);
+                showToast('Error', 'Network error while disconnecting', 'fa-exclamation-circle');
+            }
+        };
+
+        const initWebSocket = (client_id, subscription) => {
+            if (socketInstances.value[client_id]) {
+                console.log(`Closing existing WebSocket connection for ${client_id}`);
+                socketInstances.value[client_id].close();
             }
             
             const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-            const wsUrl = `${wsProtocol}://${window.location.host}/api/ws/${clientId.value}`;
-            console.log('Connecting to WebSocket URL:', wsUrl);
+            const wsUrl = `${wsProtocol}://${window.location.host}/api/ws/${client_id}`;
+            console.log(`Connecting to WebSocket URL: ${wsUrl}`);
             
             const socket = new WebSocket(wsUrl);
             
             socket.onopen = () => {
-                console.log('WebSocket connected successfully');
+                console.log(`WebSocket connected successfully for ${client_id}`);
                 connectionError.value = ''; // Clear any previous error
+                
+                // Update subscription status
+                const index = activeSubscriptions.value.findIndex(sub => sub.client_id === client_id);
+                if (index !== -1) {
+                    activeSubscriptions.value[index].connected = true;
+                }
+                
                 showToast('WebSocket Connected', 'Successfully established WebSocket connection', 'fa-check-circle');
                 
                 // WebSocket is working, we can stop the polling fallback
-                stopMessagePolling();
+                stopMessagePolling(client_id);
             };
             
             socket.onmessage = (event) => {
-                console.log('WebSocket message received:', event.data);
                 try {
                     const data = JSON.parse(event.data);
                     
                     if (data.type === 'message') {
-                        console.log('Received Pub/Sub message:', data.data);
+                        console.log(`Received Pub/Sub message for ${client_id}:`, data.data);
                         if (!pauseMessages.value) {
-                            addMessage(data.data);
+                            addMessage(data.data, subscription);
                         } else {
                             console.log('Message paused, not displaying');
                         }
                     } else if (data.type === 'status') {
-                        console.log('Received status update:', data.data);
+                        console.log(`Received status update for ${client_id}:`, data.data);
+                        
+                        // Update subscription status based on received status
+                        const index = activeSubscriptions.value.findIndex(sub => sub.client_id === client_id);
                         
                         if (data.data.error) {
-                            console.error('Status contains error:', data.data.error);
-                            connectionError.value = data.data.error;
-                            isConnected.value = false;
+                            console.error(`Status contains error for ${client_id}:`, data.data.error);
+                            if (index !== -1) {
+                                activeSubscriptions.value[index].connected = false;
+                                activeSubscriptions.value[index].error = data.data.error;
+                            }
                             showToast('Connection Error', data.data.error, 'fa-exclamation-circle');
                         } else if (data.data.status === 'connected') {
-                            console.log('Status confirms connection');
-                            isConnected.value = true;
-                            connectionError.value = '';
+                            console.log(`Status confirms connection for ${client_id}`);
+                            if (index !== -1) {
+                                activeSubscriptions.value[index].connected = true;
+                                delete activeSubscriptions.value[index].error;
+                            }
                         }
                     }
                 } catch (error) {
-                    console.error('Error processing WebSocket message:', error, event.data);
+                    console.error(`Error processing WebSocket message for ${client_id}:`, error, event.data);
                 }
             };
             
             socket.onclose = (event) => {
-                console.log('WebSocket disconnected:', event.code, event.reason);
-                if (isConnected.value) {
-                    isConnected.value = false;
+                console.log(`WebSocket disconnected for ${client_id}:`, event.code, event.reason);
+                
+                // Update subscription status
+                const index = activeSubscriptions.value.findIndex(sub => sub.client_id === client_id);
+                if (index !== -1) {
+                    activeSubscriptions.value[index].connected = false;
+                }
+                
+                // Only show notification if it was not a clean disconnect (e.g. user-initiated)
+                if (event.code !== 1000) {
                     showToast('Disconnected', `Connection to Pub/Sub was closed: ${event.reason || 'Unknown reason'}`, 'fa-times-circle');
                     // Try to reconnect after a brief delay
-                    setTimeout(retryConnection, 3000);
+                    setTimeout(() => retryConnection(client_id, subscription), 3000);
                 }
             };
             
             socket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                connectionError.value = 'WebSocket connection error';
-                // We don't set isConnected to false here as onclose will be called anyway
+                console.error(`WebSocket error for ${client_id}:`, error);
+                
+                // Update subscription status
+                const index = activeSubscriptions.value.findIndex(sub => sub.client_id === client_id);
+                if (index !== -1) {
+                    activeSubscriptions.value[index].error = 'WebSocket connection error';
+                }
+                
+                // We don't set connected to false here as onclose will be called anyway
                 showToast('WebSocket Error', 'Error in WebSocket connection, will retry automatically', 'fa-exclamation-circle');
             };
             
-            socketInstance.value = socket;
+            socketInstances.value[client_id] = socket;
         };
         
-        const retryConnection = () => {
-            console.log('Attempting to reconnect WebSocket...');
-            if (!isConnected.value && clientId.value) {
-                initWebSocket();
+        const retryConnection = (client_id, subscription) => {
+            console.log(`Attempting to reconnect WebSocket for ${client_id}...`);
+            
+            const index = activeSubscriptions.value.findIndex(sub => sub.client_id === client_id);
+            if (index !== -1 && !activeSubscriptions.value[index].connected) {
+                initWebSocket(client_id, subscription);
                 // Also poll for messages as a fallback
-                startMessagePolling();
+                startMessagePolling(client_id, subscription);
             }
         };
 
+        // Map of client_id to polling interval
+        const pollingIntervals = {};
+        
         // Fallback polling for messages if WebSocket fails
-        let pollingInterval = null;
-        const startMessagePolling = async () => {
-            if (pollingInterval) clearInterval(pollingInterval);
+        const startMessagePolling = async (client_id, subscription) => {
+            if (pollingIntervals[client_id]) clearInterval(pollingIntervals[client_id]);
             
-            console.log('Starting fallback message polling');
+            console.log(`Starting fallback message polling for ${client_id}`);
+            
             // Poll every 2 seconds
-            pollingInterval = setInterval(async () => {
-                if (!clientId.value) return;
-                
+            pollingIntervals[client_id] = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/messages/${clientId.value}`);
+                    const response = await fetch(`/api/messages/${client_id}`);
                     const data = await response.json();
-                    
-                    console.log(`Polled ${data.messages.length} messages, total ${data.total_available} available`);
                     
                     // Process messages if available
                     if (data.messages && data.messages.length > 0) {
-                        console.log('Received messages via polling:', data.messages);
+                        console.log(`Received ${data.messages.length} messages via polling for ${client_id}`);
                         
                         // Only display if not paused
                         if (!pauseMessages.value) {
@@ -234,30 +316,31 @@ const app = createApp({
                                 );
                                 
                                 if (!exists) {
-                                    addMessage(message);
+                                    addMessage(message, subscription);
                                 }
                             });
                         }
                     }
                 } catch (error) {
-                    console.error('Error polling messages:', error);
+                    console.error(`Error polling messages for ${client_id}:`, error);
                 }
             }, 2000);
         };
 
-        const stopMessagePolling = () => {
-            if (pollingInterval) {
-                console.log('Stopping fallback message polling');
-                clearInterval(pollingInterval);
-                pollingInterval = null;
+        const stopMessagePolling = (client_id) => {
+            if (pollingIntervals[client_id]) {
+                console.log(`Stopping fallback message polling for ${client_id}`);
+                clearInterval(pollingIntervals[client_id]);
+                delete pollingIntervals[client_id];
             }
         };
 
-        const addMessage = (message) => {
+        const addMessage = (message, subscription = null) => {
             // Add message to front of the array (newest first)
             messages.value.unshift({
                 data: message,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                subscription: subscription // Add the subscription information
             });
             
             // Limit the number of messages if needed
@@ -502,22 +585,53 @@ const app = createApp({
             const filter = messageFilter.value.toLowerCase();
             return messages.value.filter(msg => {
                 try {
+                    // Check message data
                     const jsonStr = JSON.stringify(msg.data).toLowerCase();
+                    
+                    // Also check subscription info if available
+                    if (msg.subscription) {
+                        const subStr = JSON.stringify({
+                            project_id: msg.subscription.project_id,
+                            subscription_id: msg.subscription.subscription_id
+                        }).toLowerCase();
+                        
+                        return jsonStr.includes(filter) || subStr.includes(filter);
+                    }
+                    
                     return jsonStr.includes(filter);
                 } catch (e) {
                     return false;
                 }
             });
         });
+        
+        // Add subscription filter feature
+        const selectedSubscription = ref(null);
+        
+        // Filtered messages by both text filter and subscription filter
+        const finalFilteredMessages = computed(() => {
+            // First apply text filter
+            let filtered = filteredMessages.value;
+            
+            // Then apply subscription filter if active
+            if (selectedSubscription.value) {
+                filtered = filtered.filter(msg => 
+                    msg.subscription && 
+                    msg.subscription.client_id === selectedSubscription.value.client_id
+                );
+            }
+            
+            return filtered;
+        });
 
         // Navigate between messages
         const navigateMessage = (direction) => {
-            const filteredMsgs = filteredMessages.value;
-            if (filteredMsgs.length === 0) return;
+            const filtered = finalFilteredMessages.value;
+            if (filtered.length === 0) return;
             
             // Find the currently expanded message index in the filtered list
             let currentExpandedIndex = -1;
-            for (let i = 0; i < filteredMsgs.length; i++) {
+            for (let i = 0; i < filtered.length; i++) {
                 if (isMessageExpanded(i)) {
                     currentExpandedIndex = i;
                     break;
@@ -528,12 +642,12 @@ const app = createApp({
             let newIndex;
             if (currentExpandedIndex === -1) {
                 // If no message is expanded, start with the first or last
-                newIndex = direction > 0 ? 0 : filteredMsgs.length - 1;
+                newIndex = direction > 0 ? 0 : filtered.length - 1;
             } else {
                 newIndex = currentExpandedIndex + direction;
                 // Handle wrapping around the ends
-                if (newIndex < 0) newIndex = filteredMsgs.length - 1;
-                if (newIndex >= filteredMsgs.length) newIndex = 0;
+                if (newIndex < 0) newIndex = filtered.length - 1;
+                if (newIndex >= filtered.length) newIndex = 0;
             }
             
             // Update the current message index for display
@@ -574,7 +688,6 @@ const app = createApp({
         return {
             config,
             messages,
-            isConnected,
             isConnecting,
             connectionError,
             autoScroll,
@@ -589,9 +702,13 @@ const app = createApp({
             toastIcon,
             darkMode,
             currentMessageIndex,
-            filteredMessages,
+            finalFilteredMessages,
+            activeSubscriptions,
+            showNewSubscriptionForm,
+            selectedSubscription,
             
             connectToPubSub,
+            disconnectSubscription,
             clearMessages,
             toggleMessageExpanded,
             isMessageExpanded,
@@ -601,8 +718,6 @@ const app = createApp({
             toggleSidebar,
             showToast,
             hideToast,
-            startMessagePolling,
-            stopMessagePolling,
             navigateMessage,
             toggleDarkMode
         };

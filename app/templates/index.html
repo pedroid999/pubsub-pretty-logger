@@ -68,24 +68,56 @@
                     <div class="position-sticky pt-3 sidebar-sticky">
                         <div class="px-3 mb-3">
                             <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-2 text-body-secondary text-uppercase">
-                                <span>Connection</span>
-                            </h6>
-                            <form @submit.prevent="connectToPubSub">
-                                <div class="mb-3">
-                                    <label for="projectId" class="form-label">Project ID</label>
-                                    <input type="text" class="form-control" id="projectId" v-model="config.project_id" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="subscriptionId" class="form-label">Subscription ID</label>
-                                    <input type="text" class="form-control" id="subscriptionId" v-model="config.subscription_id" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary w-100" :disabled="isConnecting">
-                                    <i class="fas fa-plug me-2"></i>
-                                    <span v-if="isConnected">Connected</span>
-                                    <span v-else-if="isConnecting">Connecting...</span>
-                                    <span v-else>Connect</span>
+                                <span>Subscriptions</span>
+                                <button class="btn btn-sm btn-outline-primary" @click="showNewSubscriptionForm = true" v-if="!showNewSubscriptionForm">
+                                    <i class="fas fa-plus"></i>
                                 </button>
-                            </form>
+                            </h6>
+                            
+                            <!-- Active subscriptions list -->
+                            <div v-if="activeSubscriptions.length > 0" class="subscriptions-list mb-3">
+                                <div v-for="(sub, index) in activeSubscriptions" :key="sub.client_id" class="subscription-item mb-2 p-2 border rounded">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="fw-bold">${ sub.subscription_id }</div>
+                                            <div class="small text-secondary">${ sub.project_id }</div>
+                                        </div>
+                                        <div>
+                                            <span class="badge bg-success me-1">Connected</span>
+                                            <button class="btn btn-sm btn-outline-danger" @click="disconnectSubscription(sub.client_id)">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- New subscription form -->
+                            <div v-if="showNewSubscriptionForm || activeSubscriptions.length === 0">
+                                <form @submit.prevent="connectToPubSub">
+                                    <div class="mb-3">
+                                        <label for="projectId" class="form-label">Project ID</label>
+                                        <input type="text" class="form-control" id="projectId" v-model="config.project_id" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="subscriptionId" class="form-label">Subscription ID</label>
+                                        <input type="text" class="form-control" id="subscriptionId" v-model="config.subscription_id" required>
+                                    </div>
+                                    <div class="d-flex">
+                                        <button type="submit" class="btn btn-primary flex-grow-1" :disabled="isConnecting">
+                                            <i class="fas fa-plug me-2"></i>
+                                            <span v-if="isConnecting">Connecting...</span>
+                                            <span v-else>Connect</span>
+                                        </button>
+                                        <button v-if="showNewSubscriptionForm && activeSubscriptions.length > 0" 
+                                                type="button" 
+                                                class="btn btn-outline-secondary ms-2" 
+                                                @click="showNewSubscriptionForm = false">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                             
                             <div v-if="connectionError" class="alert alert-danger mt-3">
                                 ${ connectionError }
@@ -124,6 +156,16 @@
                                 <input type="text" class="form-control form-control-sm" id="filterInput" 
                                        v-model="messageFilter" placeholder="Filter text">
                             </div>
+                            
+                            <div class="mb-3" v-if="activeSubscriptions.length > 1">
+                                <label for="subscriptionFilter" class="form-label">Filter by subscription</label>
+                                <select class="form-select form-select-sm" id="subscriptionFilter" v-model="selectedSubscription">
+                                    <option :value="null">All subscriptions</option>
+                                    <option v-for="sub in activeSubscriptions" :key="sub.client_id" :value="sub">
+                                        ${ sub.subscription_id }
+                                    </option>
+                                </select>
+                            </div>
                         </div>
                         
                         <hr>
@@ -134,15 +176,17 @@
                             </h6>
                             
                             <div class="mb-1">
-                                <span class="badge" :class="isConnected ? 'bg-success' : 'bg-secondary'">
-                                    ${ isConnected ? 'Connected' : 'Disconnected' }
+                                <span class="badge" :class="activeSubscriptions.length > 0 ? 'bg-success' : 'bg-secondary'">
+                                    ${ activeSubscriptions.length > 0 ? 'Connected' : 'Disconnected' }
                                 </span>
-                                <small class="text-body-secondary ms-2">Messages: ${ messages.length }</small>
+                                <small class="text-body-secondary ms-2">
+                                    Messages: ${ messages.length } | 
+                                    Subscriptions: ${ activeSubscriptions.length }
+                                </small>
                             </div>
                             
-                            <div v-if="isConnected" class="small text-truncate">
-                                <strong>Project:</strong> ${ config.project_id }<br>
-                                <strong>Subscription:</strong> ${ config.subscription_id }
+                            <div v-if="activeSubscriptions.length > 0" class="small text-truncate">
+                                <strong>Active Subscriptions:</strong> ${ activeSubscriptions.length }
                             </div>
                         </div>
                     </div>
@@ -183,18 +227,21 @@
                             <button class="btn btn-sm btn-outline-primary" @click="navigateMessage(-1)" title="Previous message">
                                 <i class="fas fa-arrow-left"></i> Previous
                             </button>
-                            <span class="message-counter">${ currentMessageIndex + 1 } / ${ messages.length }</span>
+                            <span class="message-counter">${ currentMessageIndex + 1 } / ${ finalFilteredMessages.length }</span>
                             <button class="btn btn-sm btn-outline-primary" @click="navigateMessage(1)" title="Next message">
                                 Next <i class="fas fa-arrow-right"></i>
                             </button>
                         </div>
                         
-                        <div v-for="(msg, index) in filteredMessages" :key="index" class="message-card">
+                        <div v-for="(msg, index) in finalFilteredMessages" :key="index" class="message-card">
                             <div class="message-header" @click="toggleMessageExpanded(index)">
                                 <div class="message-info">
                                     <span class="message-timestamp">${ formatTimestamp(msg.data.publish_time) }</span>
                                     <span class="message-type" v-if="getMessageType(msg)">
                                         ${ getMessageType(msg) }
+                                    </span>
+                                    <span class="message-subscription" v-if="msg.subscription">
+                                        <span class="badge bg-primary">${ msg.subscription.subscription_id }</span>
                                     </span>
                                 </div>
                                 <div class="message-actions">

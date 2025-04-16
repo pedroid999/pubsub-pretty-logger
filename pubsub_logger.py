@@ -6,6 +6,7 @@ import argparse
 import os
 from dotenv import load_dotenv
 import sys
+import time
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -30,6 +31,12 @@ def parse_arguments():
         "--subscription-id",
         default=os.environ.get("PUBSUB_SUBSCRIPTION_ID", "your-subscription-id"),
         help='Pub/Sub subscription ID (default: from PUBSUB_SUBSCRIPTION_ID env var or "your-subscription-id")',
+    )
+    
+    parser.add_argument(
+        "--subscriptions",
+        nargs="+",
+        help="Multiple subscription IDs to listen to (format: 'project-id:subscription-id')",
     )
 
     parser.add_argument(
@@ -108,39 +115,45 @@ def print_json_field(field_name, value, indent=0, is_array_item=False):
             print(f"{indent_str}{prefix}{formatted_value}")
 
 
-def callback(message):
-    try:
-        # Decode message from bytes to string
-        message_data = message.data.decode("utf-8")
-
-        # Print message header
-        print(f"\n{Fore.CYAN}{'='*80}{Style.RESET_ALL}")
-        print(f"{Fore.GREEN}MESSAGE RECEIVED:{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}{'='*80}{Style.RESET_ALL}")
-
-        # Print message attributes if any
-        if message.attributes:
-            print(f"{Fore.YELLOW}Message Attributes:{Style.RESET_ALL}")
-            for key, value in message.attributes.items():
-                print(f"  {Fore.YELLOW}{key}:{Style.RESET_ALL} {value}")
-            print()
-
-        # Try to parse the message data as JSON
+def create_callback(project_id, subscription_id):
+    """Create a callback function for a specific subscription."""
+    
+    def callback(message):
         try:
-            json_data = json.loads(message_data)
-            print_json_field("Message Data", json_data)
-        except json.JSONDecodeError:
-            # If not valid JSON, print as raw data
-            print(f"{Fore.YELLOW}Raw Message Data:{Style.RESET_ALL}")
-            print(message_data)
+            # Decode message from bytes to string
+            message_data = message.data.decode("utf-8")
 
-        print(f"{Fore.CYAN}{'='*80}{Style.RESET_ALL}\n")
+            # Print message header with subscription info
+            print(f"\n{Fore.CYAN}{'='*80}{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}MESSAGE RECEIVED FROM SUBSCRIPTION:{Style.RESET_ALL}")
+            print(f"{Fore.MAGENTA}Project: {project_id}, Subscription: {subscription_id}{Style.RESET_ALL}")
+            print(f"{Fore.CYAN}{'='*80}{Style.RESET_ALL}")
 
-    except Exception as e:
-        print(f"{Fore.RED}Error processing message: {e}{Style.RESET_ALL}")
-        print(f"Original message: {message.data}")
+            # Print message attributes if any
+            if message.attributes:
+                print(f"{Fore.YELLOW}Message Attributes:{Style.RESET_ALL}")
+                for key, value in message.attributes.items():
+                    print(f"  {Fore.YELLOW}{key}:{Style.RESET_ALL} {value}")
+                print()
 
-    message.ack()  # Acknowledge the message
+            # Try to parse the message data as JSON
+            try:
+                json_data = json.loads(message_data)
+                print_json_field("Message Data", json_data)
+            except json.JSONDecodeError:
+                # If not valid JSON, print as raw data
+                print(f"{Fore.YELLOW}Raw Message Data:{Style.RESET_ALL}")
+                print(message_data)
+
+            print(f"{Fore.CYAN}{'='*80}{Style.RESET_ALL}\n")
+
+        except Exception as e:
+            print(f"{Fore.RED}Error processing message: {e}{Style.RESET_ALL}")
+            print(f"Original message: {message.data}")
+
+        message.ack()  # Acknowledge the message
+        
+    return callback
 
 
 def start_web_server(port):
@@ -186,32 +199,89 @@ def main():
 
     # Create subscriber client
     subscriber = pubsub_v1.SubscriberClient()
+    
+    # Define subscriptions to listen to
+    subscriptions = []
+    
+    # Process multiple subscriptions if provided
+    if args.subscriptions:
+        for sub_string in args.subscriptions:
+            # Parse project:subscription format
+            try:
+                if ":" in sub_string:
+                    project_id, subscription_id = sub_string.split(":", 1)
+                    subscriptions.append((project_id, subscription_id))
+                else:
+                    print(f"{Fore.YELLOW}Warning: Skipping invalid subscription format: {sub_string}. Use 'project-id:subscription-id' format.{Style.RESET_ALL}")
+            except Exception as e:
+                print(f"{Fore.RED}Error parsing subscription {sub_string}: {e}{Style.RESET_ALL}")
+    
+    # Also add the default subscription from args if provided
+    if args.project_id and args.subscription_id:
+        if not any(s[0] == args.project_id and s[1] == args.subscription_id for s in subscriptions):
+            subscriptions.append((args.project_id, args.subscription_id))
 
-    # Get the subscription path
-    subscription_path = subscriber.subscription_path(
-        args.project_id, args.subscription_id
-    )
+    # Check if we have any subscriptions to listen to
+    if not subscriptions:
+        print(f"{Fore.RED}Error: No valid subscriptions provided. Use --subscription-id or --subscriptions.{Style.RESET_ALL}")
+        sys.exit(1)
 
-    print(
-        f"{Fore.GREEN}Listening for messages on {Fore.BLUE}{subscription_path}{Fore.GREEN}...{Style.RESET_ALL}"
-    )
-    print(f"{Fore.YELLOW}Project ID:{Style.RESET_ALL} {args.project_id}")
-    print(f"{Fore.YELLOW}Subscription ID:{Style.RESET_ALL} {args.subscription_id}")
+    print(f"{Fore.GREEN}Starting Pub/Sub listener with {len(subscriptions)} subscription(s){Style.RESET_ALL}")
     print(f"{Fore.YELLOW}Environment file:{Style.RESET_ALL} {args.env_file}")
     print(f"{Fore.YELLOW}Press Ctrl+C to exit{Style.RESET_ALL}")
+    
+    # Store futures for later cleanup
+    futures = []
 
     try:
-        # Subscribe to the subscription
-        streaming_pull_future = subscriber.subscribe(
-            subscription_path, callback=callback
-        )
-
-        # Keep the main thread alive
-        streaming_pull_future.result()
+        # Subscribe to each subscription
+        for project_id, subscription_id in subscriptions:
+            # Get the subscription path
+            subscription_path = subscriber.subscription_path(
+                project_id, subscription_id
+            )
+            
+            print(f"\n{Fore.GREEN}Starting listener for:{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}Project ID:{Style.RESET_ALL} {project_id}")
+            print(f"{Fore.YELLOW}Subscription ID:{Style.RESET_ALL} {subscription_id}")
+            print(f"{Fore.BLUE}Path: {subscription_path}{Style.RESET_ALL}")
+            
+            # Create a callback specific to this subscription
+            subscription_callback = create_callback(project_id, subscription_id)
+            
+            # Subscribe to the subscription
+            streaming_pull_future = subscriber.subscribe(
+                subscription_path, callback=subscription_callback
+            )
+            
+            # Add future to the list for cleanup
+            futures.append(streaming_pull_future)
+        
+        # Handle multiple futures
+        if len(futures) == 1:
+            # With a single subscription, just wait on the result
+            futures[0].result()
+        else:
+            # With multiple subscriptions, wait for keyboard interrupt
+            print(f"\n{Fore.GREEN}Listening on {len(futures)} subscriptions...{Style.RESET_ALL}")
+            
+            # Keep the main thread alive until Ctrl+C
+            while True:
+                time.sleep(1)
+                
     except KeyboardInterrupt:
-        print(f"\n{Fore.YELLOW}Stopping subscription...{Style.RESET_ALL}")
-        streaming_pull_future.cancel()
+        print(f"\n{Fore.YELLOW}Stopping subscriptions...{Style.RESET_ALL}")
+        for i, future in enumerate(futures):
+            print(f"Cancelling subscription {i+1}/{len(futures)}...")
+            future.cancel()
         print(f"{Fore.GREEN}Goodbye!{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"{Fore.RED}Error in Pub/Sub listener: {e}{Style.RESET_ALL}")
+        for future in futures:
+            try:
+                future.cancel()
+            except:
+                pass
 
 
 if __name__ == "__main__":
