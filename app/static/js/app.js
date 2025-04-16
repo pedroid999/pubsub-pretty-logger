@@ -39,6 +39,10 @@ const app = createApp({
         const loadingProjects = ref(false);
         const loadingSubscriptions = ref(false);
         
+        // Keyboard navigation for autocomplete
+        const selectedProjectIndex = ref(-1);
+        const selectedSubscriptionIndex = ref(-1);
+        
         // Toast refs
         const toast = ref(null);
         const toastTitle = ref('');
@@ -84,6 +88,7 @@ const app = createApp({
         const fetchProjects = async () => {
             if (projects.value.length > 0) {
                 showProjectSuggestions.value = true;
+                selectedProjectIndex.value = -1;  // Reset selection index when showing suggestions
                 return;
             }
             
@@ -99,6 +104,7 @@ const app = createApp({
                 
                 if (projects.value.length > 0) {
                     showProjectSuggestions.value = true;
+                    selectedProjectIndex.value = -1;  // Reset selection index when showing suggestions
                 }
             } catch (error) {
                 console.error('Error fetching projects:', error);
@@ -117,6 +123,7 @@ const app = createApp({
             if (subscriptions.value.length > 0 && 
                 subscriptions.value[0].project_id === config.value.project_id) {
                 showSubscriptionSuggestions.value = true;
+                selectedSubscriptionIndex.value = -1;  // Reset selection index when showing suggestions
                 return;
             }
             
@@ -136,6 +143,7 @@ const app = createApp({
                         sub.project_id = config.value.project_id;
                     });
                     showSubscriptionSuggestions.value = true;
+                    selectedSubscriptionIndex.value = -1;  // Reset selection index when showing suggestions
                 }
             } catch (error) {
                 console.error('Error fetching subscriptions:', error);
@@ -145,6 +153,74 @@ const app = createApp({
             }
         };
         
+        // Handle keyboard events for Project ID autocomplete
+        const handleProjectKeydown = (event) => {
+            if (!showProjectSuggestions.value || filteredProjects.value.length === 0) return;
+            
+            if (event.key === 'ArrowDown') {
+                event.preventDefault(); // Prevent scrolling
+                if (selectedProjectIndex.value < filteredProjects.value.length - 1) {
+                    selectedProjectIndex.value++;
+                } else {
+                    selectedProjectIndex.value = 0; // Loop back to first item
+                }
+                console.log("Down arrow pressed, selected index:", selectedProjectIndex.value);
+            } 
+            else if (event.key === 'ArrowUp') {
+                event.preventDefault(); // Prevent scrolling
+                if (selectedProjectIndex.value > 0) {
+                    selectedProjectIndex.value--;
+                } else {
+                    selectedProjectIndex.value = filteredProjects.value.length - 1; // Loop to last item
+                }
+                console.log("Up arrow pressed, selected index:", selectedProjectIndex.value);
+            } 
+            else if (event.key === 'Enter' && selectedProjectIndex.value >= 0) {
+                event.preventDefault(); // Prevent form submission
+                const selected = filteredProjects.value[selectedProjectIndex.value];
+                console.log("Enter pressed, selecting project:", selected);
+                selectProject(selected);
+            }
+            else if (event.key === 'Escape') {
+                showProjectSuggestions.value = false;
+                console.log("Escape pressed, hiding suggestions");
+            }
+        };
+        
+        // Handle keyboard events for Subscription ID autocomplete
+        const handleSubscriptionKeydown = (event) => {
+            if (!showSubscriptionSuggestions.value || filteredSubscriptions.value.length === 0) return;
+            
+            if (event.key === 'ArrowDown') {
+                event.preventDefault(); // Prevent scrolling
+                if (selectedSubscriptionIndex.value < filteredSubscriptions.value.length - 1) {
+                    selectedSubscriptionIndex.value++;
+                } else {
+                    selectedSubscriptionIndex.value = 0; // Loop back to first item
+                }
+                console.log("Down arrow pressed, selected subscription index:", selectedSubscriptionIndex.value);
+            } 
+            else if (event.key === 'ArrowUp') {
+                event.preventDefault(); // Prevent scrolling
+                if (selectedSubscriptionIndex.value > 0) {
+                    selectedSubscriptionIndex.value--;
+                } else {
+                    selectedSubscriptionIndex.value = filteredSubscriptions.value.length - 1; // Loop to last item
+                }
+                console.log("Up arrow pressed, selected subscription index:", selectedSubscriptionIndex.value);
+            } 
+            else if (event.key === 'Enter' && selectedSubscriptionIndex.value >= 0) {
+                event.preventDefault(); // Prevent form submission
+                const selected = filteredSubscriptions.value[selectedSubscriptionIndex.value];
+                console.log("Enter pressed, selecting subscription:", selected);
+                selectSubscription(selected);
+            }
+            else if (event.key === 'Escape') {
+                showSubscriptionSuggestions.value = false;
+                console.log("Escape pressed, hiding subscription suggestions");
+            }
+        };
+
         const projectInputChanged = () => {
             if (!config.value.project_id) {
                 showProjectSuggestions.value = false;
@@ -158,6 +234,7 @@ const app = createApp({
             );
             
             showProjectSuggestions.value = filteredProjects.value.length > 0;
+            selectedProjectIndex.value = -1; // Reset selection when input changes
         };
         
         const subscriptionInputChanged = () => {
@@ -173,11 +250,13 @@ const app = createApp({
             );
             
             showSubscriptionSuggestions.value = filteredSubscriptions.value.length > 0;
+            selectedSubscriptionIndex.value = -1; // Reset selection when input changes
         };
         
         const selectProject = (project) => {
             config.value.project_id = project.id;
             showProjectSuggestions.value = false;
+            selectedProjectIndex.value = -1;
             
             // Clear subscriptions when project changes
             subscriptions.value = [];
@@ -188,8 +267,9 @@ const app = createApp({
         const selectSubscription = (subscription) => {
             config.value.subscription_id = subscription.id;
             showSubscriptionSuggestions.value = false;
+            selectedSubscriptionIndex.value = -1;
         };
-        
+
         // Close suggestions when clicking outside
         document.addEventListener('click', (event) => {
             if (!event.target.closest('.autocomplete-container')) {
@@ -870,7 +950,13 @@ const app = createApp({
             projectInputChanged,
             subscriptionInputChanged,
             selectProject,
-            selectSubscription
+            selectSubscription,
+            
+            // Keyboard navigation
+            selectedProjectIndex,
+            selectedSubscriptionIndex,
+            handleProjectKeydown,
+            handleSubscriptionKeydown
         };
     }
 }).mount('#app'); 

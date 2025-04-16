@@ -103,12 +103,14 @@
                                                 v-model="config.project_id" 
                                                 @focus="fetchProjects" 
                                                 @input="projectInputChanged"
+                                                @keydown.stop="handleProjectKeydown"
                                                 autocomplete="off"
                                                 required>
                                             <div class="autocomplete-items" v-if="showProjectSuggestions && filteredProjects.length > 0">
-                                                <div v-for="project in filteredProjects" 
+                                                <div v-for="(project, index) in filteredProjects" 
                                                     :key="project.id" 
                                                     class="autocomplete-item"
+                                                    :class="{ 'autocomplete-active': index === selectedProjectIndex }"
                                                     @click="selectProject(project)">
                                                     <strong>${ project.id }</strong>
                                                     <span v-if="project.name && project.name !== project.id"> - ${ project.name }</span>
@@ -128,12 +130,14 @@
                                                 v-model="config.subscription_id" 
                                                 @focus="fetchSubscriptions" 
                                                 @input="subscriptionInputChanged"
+                                                @keydown.stop="handleSubscriptionKeydown"
                                                 autocomplete="off"
                                                 required>
                                             <div class="autocomplete-items" v-if="showSubscriptionSuggestions && filteredSubscriptions.length > 0">
-                                                <div v-for="subscription in filteredSubscriptions" 
+                                                <div v-for="(subscription, index) in filteredSubscriptions" 
                                                     :key="subscription.id" 
                                                     class="autocomplete-item"
+                                                    :class="{ 'autocomplete-active': index === selectedSubscriptionIndex }"
                                                     @click="selectSubscription(subscription)">
                                                     <strong>${ subscription.id }</strong>
                                                     <span v-if="subscription.topic"> (Topic: ${ subscription.topic })</span>
