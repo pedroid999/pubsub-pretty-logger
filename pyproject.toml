@@ -18,6 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "google-cloud-pubsub>=2.13.0",
+    "google-cloud-resource-manager>=1.14.0",
     "colorama>=0.4.6",
     "python-dotenv>=1.0.0",
     "fastapi>=0.115.0",

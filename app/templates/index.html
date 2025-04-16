@@ -95,14 +95,56 @@
                             <!-- New subscription form -->
                             <div v-if="showNewSubscriptionForm || activeSubscriptions.length === 0">
                                 <form @submit.prevent="connectToPubSub">
+                                    <!-- Project ID with autocomplete -->
                                     <div class="mb-3">
                                         <label for="projectId" class="form-label">Project ID</label>
-                                        <input type="text" class="form-control" id="projectId" v-model="config.project_id" required>
+                                        <div class="autocomplete-container">
+                                            <input type="text" class="form-control" id="projectId" 
+                                                v-model="config.project_id" 
+                                                @focus="fetchProjects" 
+                                                @input="projectInputChanged"
+                                                autocomplete="off"
+                                                required>
+                                            <div class="autocomplete-items" v-if="showProjectSuggestions && filteredProjects.length > 0">
+                                                <div v-for="project in filteredProjects" 
+                                                    :key="project.id" 
+                                                    class="autocomplete-item"
+                                                    @click="selectProject(project)">
+                                                    <strong>${ project.id }</strong>
+                                                    <span v-if="project.name && project.name !== project.id"> - ${ project.name }</span>
+                                                </div>
+                                            </div>
+                                            <div class="autocomplete-loading" v-if="loadingProjects">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading projects...
+                                            </div>
+                                        </div>
                                     </div>
+                                    
+                                    <!-- Subscription ID with autocomplete -->
                                     <div class="mb-3">
                                         <label for="subscriptionId" class="form-label">Subscription ID</label>
-                                        <input type="text" class="form-control" id="subscriptionId" v-model="config.subscription_id" required>
+                                        <div class="autocomplete-container">
+                                            <input type="text" class="form-control" id="subscriptionId" 
+                                                v-model="config.subscription_id" 
+                                                @focus="fetchSubscriptions" 
+                                                @input="subscriptionInputChanged"
+                                                autocomplete="off"
+                                                required>
+                                            <div class="autocomplete-items" v-if="showSubscriptionSuggestions && filteredSubscriptions.length > 0">
+                                                <div v-for="subscription in filteredSubscriptions" 
+                                                    :key="subscription.id" 
+                                                    class="autocomplete-item"
+                                                    @click="selectSubscription(subscription)">
+                                                    <strong>${ subscription.id }</strong>
+                                                    <span v-if="subscription.topic"> (Topic: ${ subscription.topic })</span>
+                                                </div>
+                                            </div>
+                                            <div class="autocomplete-loading" v-if="loadingSubscriptions">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading subscriptions...
+                                            </div>
+                                        </div>
                                     </div>
+                                    
                                     <div class="d-flex">
                                         <button type="submit" class="btn btn-primary flex-grow-1" :disabled="isConnecting">
                                             <i class="fas fa-plug me-2"></i>

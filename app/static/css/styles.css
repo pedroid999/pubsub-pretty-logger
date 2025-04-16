@@ -16,6 +16,8 @@
     --sidebar-bg: #f8f9fa;
     --message-header-bg: #f0f4f8;
     --message-attributes-bg: #f8f9fa;
+    --autocomplete-hover: #f0f8ff;
+    --autocomplete-border: #e9ecef;
 }
 
 /* Dark mode variables */
@@ -30,6 +32,8 @@
     --sidebar-bg: #1e1e1e;
     --message-header-bg: #2c2c2c;
     --message-attributes-bg: #2a2a2a;
+    --autocomplete-hover: #233042;
+    --autocomplete-border: #2c2c2c;
 }
 
 /* Transition for theme change */
@@ -289,6 +293,63 @@ main {
     color: #6c757d;
 }
 
+/* Autocomplete styles */
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-items {
+    position: absolute;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 250px;
+    overflow-y: auto;
+    background-color: var(--card-bg);
+    border: 1px solid var(--autocomplete-border);
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--autocomplete-border);
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover {
+    background-color: var(--autocomplete-hover);
+}
+
+.autocomplete-item strong {
+    font-weight: 600;
+}
+
+.autocomplete-item span {
+    color: var(--muted-text);
+    font-size: 0.85rem;
+}
+
+.autocomplete-loading {
+    position: absolute;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: 10px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--autocomplete-border);
+    border-radius: 0 0 4px 4px;
+    color: var(--muted-text);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
 /* Toast */
 .toast {
     opacity: 1;
@@ -359,6 +420,10 @@ main {
     .messages-container {
         max-height: calc(100vh - 180px);
     }
+
+    .autocomplete-items {
+        max-height: 200px;
+    }
 }
 
 /* Dark mode toggle button */
@@ -415,4 +480,18 @@ main {
 
 .dark-mode .border-bottom {
     border-bottom-color: #2a2a2a !important;
+}
+
+.dark-mode .autocomplete-items,
+.dark-mode .autocomplete-loading {
+    background-color: #2a2a2a;
+    border-color: #3a3a3a;
+}
+
+.dark-mode .autocomplete-item {
+    border-color: #3a3a3a;
+}
+
+.dark-mode .autocomplete-item:hover {
+    background-color: #333;
 } 

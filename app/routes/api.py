@@ -5,10 +5,13 @@ import asyncio
 from typing import List, Dict, Any, Optional
 import os
 from google.cloud import pubsub_v1
+from google.cloud.resourcemanager_v3 import ProjectsClient, ListProjectsRequest, Project
 from dotenv import load_dotenv
 import threading
 import queue
 import time
+import subprocess
+import re
 
 # Load environment variables
 load_dotenv()
@@ -31,6 +34,15 @@ class PubSubMessage(BaseModel):
     attributes: Optional[Dict[str, str]] = None
     message_id: str
     publish_time: str
+
+class Project(BaseModel):
+    id: str
+    name: str
+
+class Subscription(BaseModel):
+    id: str
+    name: str
+    topic: str
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -149,6 +161,125 @@ def create_subscription_listener(project_id, subscription_id, msg_queue, status_
         import traceback
         traceback.print_exc()
         status_queue.put({"error": f"Failed to connect: {str(e)}"})
+
+def get_gcp_projects_api():
+    """Get available GCP projects using the Google Cloud Resource Manager API"""
+    try:
+        # Create a Resource Manager client using the credentials
+        client = ProjectsClient()
+        
+        # List all projects the authenticated account has access to
+        projects_iterator = client.list_projects()
+        
+        projects = []
+        for project in projects_iterator:
+            if project.state == Project.State.ACTIVE:
+                projects.append({
+                    "id": project.project_id,
+                    "name": project.display_name or project.project_id
+                })
+        
+        return projects
+    except Exception as e:
+        print(f"Error retrieving projects via API: {str(e)}")
+        return []
+
+def get_gcp_projects_gcloud():
+    """Get available GCP projects using the gcloud command line tool"""
+    try:
+        cmd = ["gcloud", "projects", "list", "--format=json"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        projects_data = json.loads(result.stdout)
+        
+        projects = []
+        for project in projects_data:
+            if project.get("lifecycleState") == "ACTIVE":
+                projects.append({
+                    "id": project.get("projectId"),
+                    "name": project.get("name") or project.get("projectId")
+                })
+        
+        return projects
+    except Exception as e:
+        print(f"Error retrieving projects via gcloud: {str(e)}")
+        return []
+
+def get_gcp_projects():
+    """Get available GCP projects using first the API, then falling back to gcloud"""
+    projects = get_gcp_projects_api()
+    if not projects:
+        projects = get_gcp_projects_gcloud()
+    
+    return projects
+
+def get_pubsub_subscriptions_api(project_id):
+    """Get Pub/Sub subscriptions for a project using the Google Cloud Pub/Sub API"""
+    try:
+        subscriber = pubsub_v1.SubscriberClient()
+        project_path = f"projects/{project_id}"
+        
+        subscriptions = []
+        for subscription in subscriber.list_subscriptions(project=project_path):
+            # Extract subscription ID from the full path
+            subscription_id = subscription.name.split('/')[-1]
+            
+            # Extract topic from the full path
+            topic = subscription.topic.split('/')[-1] if subscription.topic else ""
+            
+            subscriptions.append({
+                "id": subscription_id,
+                "name": subscription_id,
+                "topic": topic
+            })
+        
+        return subscriptions
+    except Exception as e:
+        print(f"Error retrieving subscriptions via API: {str(e)}")
+        return []
+
+def get_pubsub_subscriptions_gcloud(project_id):
+    """Get Pub/Sub subscriptions for a project using the gcloud command line tool"""
+    try:
+        cmd = ["gcloud", "pubsub", "subscriptions", "list", 
+               f"--project={project_id}", "--format=json"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        subscriptions_data = json.loads(result.stdout)
+        
+        subscriptions = []
+        for sub in subscriptions_data:
+            subscription_id = sub.get("name").split('/')[-1]
+            topic = sub.get("topic", "").split('/')[-1] if sub.get("topic") else ""
+            
+            subscriptions.append({
+                "id": subscription_id,
+                "name": subscription_id,
+                "topic": topic
+            })
+        
+        return subscriptions
+    except Exception as e:
+        print(f"Error retrieving subscriptions via gcloud: {str(e)}")
+        return []
+
+def get_pubsub_subscriptions(project_id):
+    """Get Pub/Sub subscriptions for a project using first the API, then falling back to gcloud"""
+    subscriptions = get_pubsub_subscriptions_api(project_id)
+    if not subscriptions:
+        subscriptions = get_pubsub_subscriptions_gcloud(project_id)
+    
+    return subscriptions
+
+@router.get("/projects")
+def get_projects():
+    """Get available GCP projects"""
+    projects = get_gcp_projects()
+    return {"projects": projects}
+
+@router.get("/subscriptions/{project_id}")
+def get_subscriptions(project_id: str):
+    """Get available Pub/Sub subscriptions for a project"""
+    subscriptions = get_pubsub_subscriptions(project_id)
+    return {"subscriptions": subscriptions}
 
 @router.post("/connect")
 async def connect_to_pubsub(config: PubSubConfig, background_tasks: BackgroundTasks):

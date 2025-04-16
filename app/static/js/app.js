@@ -29,6 +29,16 @@ const app = createApp({
         const currentMessageIndex = ref(0);
         const darkMode = ref(false);
         
+        // Autocomplete state
+        const projects = ref([]);
+        const subscriptions = ref([]);
+        const filteredProjects = ref([]);
+        const filteredSubscriptions = ref([]);
+        const showProjectSuggestions = ref(false);
+        const showSubscriptionSuggestions = ref(false);
+        const loadingProjects = ref(false);
+        const loadingSubscriptions = ref(false);
+        
         // Toast refs
         const toast = ref(null);
         const toastTitle = ref('');
@@ -69,6 +79,124 @@ const app = createApp({
                 document.body.classList.add('dark-mode');
             }
         };
+
+        // Autocomplete methods
+        const fetchProjects = async () => {
+            if (projects.value.length > 0) {
+                showProjectSuggestions.value = true;
+                return;
+            }
+            
+            loadingProjects.value = true;
+            showProjectSuggestions.value = false;
+            
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                
+                projects.value = data.projects || [];
+                filteredProjects.value = [...projects.value];
+                
+                if (projects.value.length > 0) {
+                    showProjectSuggestions.value = true;
+                }
+            } catch (error) {
+                console.error('Error fetching projects:', error);
+                showToast('Error', 'Failed to fetch GCP projects', 'fa-exclamation-circle');
+            } finally {
+                loadingProjects.value = false;
+            }
+        };
+        
+        const fetchSubscriptions = async () => {
+            if (!config.value.project_id) {
+                showToast('Info', 'Please select a project first', 'fa-info-circle');
+                return;
+            }
+            
+            if (subscriptions.value.length > 0 && 
+                subscriptions.value[0].project_id === config.value.project_id) {
+                showSubscriptionSuggestions.value = true;
+                return;
+            }
+            
+            loadingSubscriptions.value = true;
+            showSubscriptionSuggestions.value = false;
+            
+            try {
+                const response = await fetch(`/api/subscriptions/${config.value.project_id}`);
+                const data = await response.json();
+                
+                subscriptions.value = data.subscriptions || [];
+                filteredSubscriptions.value = [...subscriptions.value];
+                
+                if (subscriptions.value.length > 0) {
+                    // Add project_id to each subscription for reference
+                    subscriptions.value.forEach(sub => {
+                        sub.project_id = config.value.project_id;
+                    });
+                    showSubscriptionSuggestions.value = true;
+                }
+            } catch (error) {
+                console.error('Error fetching subscriptions:', error);
+                showToast('Error', 'Failed to fetch Pub/Sub subscriptions', 'fa-exclamation-circle');
+            } finally {
+                loadingSubscriptions.value = false;
+            }
+        };
+        
+        const projectInputChanged = () => {
+            if (!config.value.project_id) {
+                showProjectSuggestions.value = false;
+                return;
+            }
+            
+            const query = config.value.project_id.toLowerCase();
+            filteredProjects.value = projects.value.filter(project => 
+                project.id.toLowerCase().includes(query) || 
+                (project.name && project.name.toLowerCase().includes(query))
+            );
+            
+            showProjectSuggestions.value = filteredProjects.value.length > 0;
+        };
+        
+        const subscriptionInputChanged = () => {
+            if (!config.value.subscription_id) {
+                showSubscriptionSuggestions.value = false;
+                return;
+            }
+            
+            const query = config.value.subscription_id.toLowerCase();
+            filteredSubscriptions.value = subscriptions.value.filter(subscription => 
+                subscription.id.toLowerCase().includes(query) || 
+                subscription.topic.toLowerCase().includes(query)
+            );
+            
+            showSubscriptionSuggestions.value = filteredSubscriptions.value.length > 0;
+        };
+        
+        const selectProject = (project) => {
+            config.value.project_id = project.id;
+            showProjectSuggestions.value = false;
+            
+            // Clear subscriptions when project changes
+            subscriptions.value = [];
+            filteredSubscriptions.value = [];
+            config.value.subscription_id = '';
+        };
+        
+        const selectSubscription = (subscription) => {
+            config.value.subscription_id = subscription.id;
+            showSubscriptionSuggestions.value = false;
+        };
+        
+        // Close suggestions when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.autocomplete-container')) {
+                showProjectSuggestions.value = false;
+                showSubscriptionSuggestions.value = false;
+            }
+        });
 
         // Methods
         const loadDefaultConfig = async () => {
@@ -134,6 +262,10 @@ const app = createApp({
                         project_id: '',
                         subscription_id: ''
                     };
+
+                    // Clear suggestions
+                    showProjectSuggestions.value = false;
+                    showSubscriptionSuggestions.value = false;
                 } else {
                     connectionError.value = data.detail || 'Failed to connect';
                     showToast('Connection Error', connectionError.value, 'fa-exclamation-circle');
@@ -707,6 +839,17 @@ const app = createApp({
             showNewSubscriptionForm,
             selectedSubscription,
             
+            // Autocomplete state
+            projects,
+            subscriptions,
+            filteredProjects,
+            filteredSubscriptions,
+            showProjectSuggestions,
+            showSubscriptionSuggestions,
+            loadingProjects,
+            loadingSubscriptions,
+            
+            // Existing methods
             connectToPubSub,
             disconnectSubscription,
             clearMessages,
@@ -719,7 +862,15 @@ const app = createApp({
             showToast,
             hideToast,
             navigateMessage,
-            toggleDarkMode
+            toggleDarkMode,
+            
+            // Autocomplete methods
+            fetchProjects,
+            fetchSubscriptions,
+            projectInputChanged,
+            subscriptionInputChanged,
+            selectProject,
+            selectSubscription
         };
     }
 }).mount('#app'); 
