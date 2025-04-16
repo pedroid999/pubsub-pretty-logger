@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pubsub-pretty-logger"
+version = "0.1.0"
+authors = [
+    {name = "Author", email = "author@example.com"},
+]
+description = "A pretty logger for Pub/Sub messages"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "google-cloud-pubsub>=2.13.0",
+    "colorama>=0.4.6",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.115.0",
+    "starlette>=0.41.3,<0.47.0",
+    "uvicorn>=0.23.0",
+    "jinja2>=3.1.2",
+    "websockets>=11.0.3",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/pubsub-pretty-logger"
+"Bug Tracker" = "https://github.com/yourusername/pubsub-pretty-logger/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "pubsub_logger.py"]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+]
+ignore = [
+    "E501",  # line too long, handled by black
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py38"] 

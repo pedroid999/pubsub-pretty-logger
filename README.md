@@ -1,7 +1,7 @@
 # 🌈 Pub/Sub Pretty Logger
 
 <div align="center">
-  <img src="https://img.shields.io/badge/python-3.7+-blue.svg" alt="Python 3.7+">
+  <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/Google%20Cloud-Pub%2FSub-4285F4" alt="Google Cloud Pub/Sub">
 </div>
@@ -24,11 +24,22 @@ For detailed information about the application's technical architecture, please 
 
 ## 📋 Prerequisites
 
-- Python 3.7+
+- Python 3.8+
 - Google Cloud project with Pub/Sub subscription
 - Google Cloud credentials configured
+- uv package manager (recommended)
 
 ## 🚀 Installation and Setup
+
+### Install uv (if not already installed)
+
+```bash
+# Install uv using the official installer
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or on Windows (PowerShell)
+irm https://astral.sh/uv/install.ps1 | iex
+```
 
 ### Quick Start
 
@@ -38,24 +49,22 @@ For detailed information about the application's technical architecture, please 
    cd pubsub-pretty-logger
    ```
 
-2. Create a virtual environment (recommended):
+2. Create a virtual environment and install dependencies using uv:
    ```bash
    # Create a new virtual environment
-   python -m venv venv
-   
+   uv venv
+
    # Activate it on macOS/Linux
-   source venv/bin/activate
-   
+   source .venv/bin/activate
+
    # Or on Windows
-   venv\Scripts\activate
+   .venv\Scripts\activate
+
+   # Install dependencies from pyproject.toml
+   uv sync
    ```
 
-3. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Set up your Google Cloud credentials:
+3. Set up your Google Cloud credentials:
    ```bash
    # Option 1: Set environment variable
    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/credentials.json"
@@ -63,7 +72,7 @@ For detailed information about the application's technical architecture, please 
    # Option 2: Add to .env file (see Configuration section)
    ```
 
-5. Configure your environment:
+4. Configure your environment:
    ```bash
    # Create a .env file from the example
    cp .env.example .env
@@ -73,16 +82,16 @@ For detailed information about the application's technical architecture, please 
    # PUBSUB_SUBSCRIPTION_ID=your-subscription-id
    ```
 
-6. Start the application:
+5. Start the application:
    ```bash
    # For web interface (recommended)
-   python pubsub_logger.py --web
+   uv run pubsub_logger.py --web
    
    # For command-line interface
-   python pubsub_logger.py
+   uv run pubsub_logger.py
    ```
 
-7. For web interface, open your browser at:
+6. For web interface, open your browser at:
    ```
    http://localhost:8000
    ```
@@ -111,7 +120,7 @@ If you encounter problems or want to start with a completely clean setup:
    - Review terminal output for error messages
    - Verify your Google Cloud permissions
    - Ensure your Pub/Sub subscription exists and is accessible
-   - Make sure all dependencies are installed correctly
+   - Make sure all dependencies are installed correctly using `uv sync`
 
 ## 🐛 Debugging with VS Code
 
@@ -165,10 +174,10 @@ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/credentials.json
 
 ```bash
 # Single subscription
-python pubsub_logger.py --project-id=your-project-id --subscription-id=your-subscription-id
+uv run pubsub_logger.py --project-id=your-project-id --subscription-id=your-subscription-id
 
 # Multiple subscriptions
-python pubsub_logger.py --subscriptions project1:subscription1 project2:subscription2
+uv run pubsub_logger.py --subscriptions project1:subscription1 project2:subscription2
 ```
 
 ## 🖥️ Usage
@@ -176,13 +185,13 @@ python pubsub_logger.py --subscriptions project1:subscription1 project2:subscrip
 ### CLI Mode (Command Line Interface)
 
 ```bash
-python pubsub_logger.py
+uv run pubsub_logger.py
 ```
 
 ### Web Interface Mode
 
 ```bash
-python pubsub_logger.py --web
+uv run pubsub_logger.py --web
 ```
 
 This starts a beautiful web interface on http://127.0.0.1:8000 by default.
@@ -190,29 +199,29 @@ This starts a beautiful web interface on http://127.0.0.1:8000 by default.
 You can specify a different port if needed:
 
 ```bash
-python pubsub_logger.py --web --port=8080
+uv run pubsub_logger.py --web --port=8080
 ```
 
 ### With command line options
 
 ```bash
 # Single subscription
-python pubsub_logger.py --project-id=your-project-id --subscription-id=your-subscription-id
+uv run pubsub_logger.py --project-id=your-project-id --subscription-id=your-subscription-id
 
 # Multiple subscriptions
-python pubsub_logger.py --subscriptions project1:subscription1 project2:subscription2
+uv run pubsub_logger.py --subscriptions project1:subscription1 project2:subscription2
 ```
 
 ### Using a specific .env file
 
 ```bash
-python pubsub_logger.py --env-file=.env.production
+uv run pubsub_logger.py --env-file=.env.production
 ```
 
 ### Disable colored output (CLI mode only)
 
 ```bash
-python pubsub_logger.py --no-color
+uv run pubsub_logger.py --no-color
 ```
 
 ## 🛠️ Command Line Options
@@ -258,7 +267,7 @@ To use the web interface, follow these steps:
 
 1. Make sure you've installed all required dependencies:
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
 2. Configure your Google Cloud credentials and Pub/Sub settings in your `.env` file as described in the Configuration section.
@@ -267,21 +276,12 @@ To use the web interface, follow these steps:
 
    **Option 1:** Using the main script with the `--web` flag:
    ```bash
-   python pubsub_logger.py --web
+   uv run pubsub_logger.py --web
    ```
 
-   **Option 2:** Using the dedicated web script (more convenient):
+   **Option 2:** Using the dedicated web script:
    ```bash
-   # Make the script executable first (on macOS/Linux)
-   chmod +x run_web.py
-   
-   # Then run it
-   ./run_web.py
-   ```
-
-   **Option 3:** Running the web script with python:
-   ```bash
-   python run_web.py
+   uv run run_web.py
    ```
 
 4. Once started, open your browser and navigate to:
@@ -357,3 +357,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [FastAPI](https://fastapi.tiangolo.com/) for the web API framework
 - [Vue.js](https://vuejs.org/) for the reactive web interface
 - [JSONEditor](https://github.com/josdejong/jsoneditor) for JSON visualization 
+- [uv](https://astral.sh/uv) for fast, reliable Python package management 
