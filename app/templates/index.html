@@ -37,7 +37,7 @@
     <div id="app">
         <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
             <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#">
-                <i class="fas fa-broadcast-tower me-2"></i> Pub/Sub Pretty Logger
+                <i class="fas fa-broadcast-tower me-1 d-none d-sm-inline-block"></i> Pub/Sub Logger
             </a>
             <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" 
                     @click="toggleSidebar" aria-controls="sidebarMenu" 
@@ -47,15 +47,15 @@
             
             <div class="navbar-nav flex-row">
                 <!-- Theme Toggle Button -->
-                <div class="nav-item me-3">
+                <div class="nav-item me-2 me-md-3">
                     <button class="theme-toggle btn" @click="toggleDarkMode">
                         <i class="icon fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
-                        <span class="d-none d-md-inline">${ darkMode ? 'Light Mode' : 'Dark Mode' }</span>
+                        <span class="d-none d-md-inline">${ darkMode ? 'Light' : 'Dark' }</span>
                     </button>
                 </div>
-                <div class="nav-item text-nowrap d-md-none">
-                    <button class="nav-link px-3 btn" @click="clearMessages">
-                        <i class="fas fa-trash-alt"></i> Clear
+                <div class="nav-item text-nowrap">
+                    <button class="nav-link px-2 px-md-3 btn d-md-none" @click="clearMessages">
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
             </div>
@@ -65,9 +65,9 @@
             <div class="row">
                 <!-- Sidebar -->
                 <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" :class="{ show: sidebarVisible }">
-                    <div class="position-sticky pt-3 sidebar-sticky">
+                    <div class="position-sticky pt-md-3 sidebar-sticky">
                         <div class="px-3 mb-3">
-                            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-2 text-body-secondary text-uppercase">
+                            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-2 mt-md-4 mb-2 text-body-secondary text-uppercase">
                                 <span>Subscriptions</span>
                                 <button class="btn btn-sm btn-outline-primary" @click="showNewSubscriptionForm = true" v-if="!showNewSubscriptionForm">
                                     <i class="fas fa-plus"></i>
@@ -77,14 +77,14 @@
                             <!-- Active subscriptions list -->
                             <div v-if="activeSubscriptions.length > 0" class="subscriptions-list mb-3">
                                 <div v-for="(sub, index) in activeSubscriptions" :key="sub.client_id" class="subscription-item mb-2 p-2 border rounded">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <div class="fw-bold">${ sub.subscription_id }</div>
-                                            <div class="small text-secondary">${ sub.project_id }</div>
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                        <div class="subscription-info me-2 mb-1 mb-sm-0">
+                                            <div class="fw-bold text-break">${ sub.subscription_id }</div>
+                                            <div class="small text-secondary text-truncate">${ sub.project_id }</div>
                                         </div>
-                                        <div>
-                                            <span class="badge bg-success me-1">Connected</span>
-                                            <button class="btn btn-sm btn-outline-danger" @click="disconnectSubscription(sub.client_id)">
+                                        <div class="subscription-actions d-flex align-items-center">
+                                            <span class="badge bg-success me-2">Connected</span>
+                                            <button class="btn btn-sm btn-outline-danger" @click="disconnectSubscription(sub.client_id)" aria-label="Disconnect">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </div>
@@ -149,15 +149,15 @@
                                         </div>
                                     </div>
                                     
-                                    <div class="d-flex">
-                                        <button type="submit" class="btn btn-primary flex-grow-1" :disabled="isConnecting">
+                                    <div class="d-flex flex-column flex-sm-row">
+                                        <button type="submit" class="btn btn-primary flex-grow-1 mb-2 mb-sm-0" :disabled="isConnecting">
                                             <i class="fas fa-plug me-2"></i>
                                             <span v-if="isConnecting">Connecting...</span>
                                             <span v-else>Connect</span>
                                         </button>
                                         <button v-if="showNewSubscriptionForm && activeSubscriptions.length > 0" 
                                                 type="button" 
-                                                class="btn btn-outline-secondary ms-2" 
+                                                class="btn btn-outline-secondary ms-sm-2" 
                                                 @click="showNewSubscriptionForm = false">
                                             Cancel
                                         </button>
@@ -179,22 +179,23 @@
                             
                             <div class="btn-group w-100 mb-2">
                                 <button type="button" class="btn btn-sm btn-outline-secondary" @click="clearMessages">
-                                    <i class="fas fa-trash-alt me-2"></i>Clear
+                                    <i class="fas fa-trash-alt me-1 me-md-2"></i><span class="d-none d-sm-inline">Clear</span>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" @click="pauseMessages = !pauseMessages">
                                     <i class="fas" :class="pauseMessages ? 'fa-play' : 'fa-pause'"></i>
-                                    ${ pauseMessages ? 'Resume' : 'Pause' }
+                                    <span class="d-none d-sm-inline">${ pauseMessages ? 'Resume' : 'Pause' }</span>
                                 </button>
                             </div>
                             
-                            <div class="form-check form-switch mb-2">
+                            <div class="form-check form-switch mb-2 ps-4">
                                 <input class="form-check-input" type="checkbox" id="autoScrollSwitch" v-model="autoScroll">
                                 <label class="form-check-label" for="autoScrollSwitch">Auto-scroll</label>
                             </div>
                             
                             <div class="mb-3">
-                                <label for="maxMessages" class="form-label">Max messages (0 = unlimited)</label>
+                                <label for="maxMessages" class="form-label">Max messages</label>
                                 <input type="number" class="form-control form-control-sm" id="maxMessages" v-model.number="maxMessages" min="0">
+                                <small class="text-muted d-block mt-1">(0 = unlimited)</small>
                             </div>
 
                             <div class="mb-3">
@@ -304,30 +305,32 @@
                                     </div>
                                 </div>
                                 
-                                <div class="message-content" v-if="isMessageExpanded(getGlobalIndex(subscriptionId, msgIndex))">
-                                    <div v-if="Object.keys(msg.data.attributes || {}).length > 0" class="message-attributes mb-2">
-                                        <div class="attributes-header">
-                                            <strong>Attributes:</strong>
+                                <transition name="collapse">
+                                    <div class="message-content" v-if="isMessageExpanded(getGlobalIndex(subscriptionId, msgIndex))">
+                                        <div v-if="Object.keys(msg.data.attributes || {}).length > 0" class="message-attributes mb-2">
+                                            <div class="attributes-header">
+                                                <strong>Attributes:</strong>
+                                            </div>
+                                            <table class="attributes-table">
+                                                <tr v-for="(value, key) in msg.data.attributes" :key="key">
+                                                    <td class="attribute-key">${ key }</td>
+                                                    <td class="attribute-value">${ value }</td>
+                                                </tr>
+                                            </table>
                                         </div>
-                                        <table class="attributes-table">
-                                            <tr v-for="(value, key) in msg.data.attributes" :key="key">
-                                                <td class="attribute-key">${ key }</td>
-                                                <td class="attribute-value">${ value }</td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                    
-                                    <div class="message-data">
-                                        <div class="data-header">
-                                            <strong>Data:</strong>
+                                        
+                                        <div class="message-data">
+                                            <div class="data-header">
+                                                <strong>Data:</strong>
+                                            </div>
+                                            <div class="json-view" :id="'json-' + getGlobalIndex(subscriptionId, msgIndex)"></div>
                                         </div>
-                                        <div class="json-view" :id="'json-' + getGlobalIndex(subscriptionId, msgIndex)"></div>
+                                        
+                                        <div class="message-footer">
+                                            <small>Message ID: ${ msg.data.message_id }</small>
+                                        </div>
                                     </div>
-                                    
-                                    <div class="message-footer">
-                                        <small>Message ID: ${ msg.data.message_id }</small>
-                                    </div>
-                                </div>
+                                </transition>
                             </div>
                         </div>
                     </div>

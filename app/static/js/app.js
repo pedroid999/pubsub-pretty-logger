@@ -2,11 +2,15 @@
  * Pub/Sub Pretty Logger - Vue.js Frontend
  */
 
-const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+const { createApp, ref, computed, onMounted, nextTick, watch, Transition } = Vue;
 
 const app = createApp({
     // Use custom delimiters to avoid conflicts with Jinja2
     ...window.vueDelimiters,
+    // Register components for transitions
+    components: {
+        'transition': Transition
+    },
     setup() {
         // State
         const config = ref({
@@ -630,7 +634,10 @@ const app = createApp({
             if (newValue) {
                 // Initialize JSON editor if this is the first time expanding
                 nextTick(() => {
-                    initJsonEditor(index, messages.value[index].data.data);
+                    // Asegurarse de que el DOM se ha actualizado antes de inicializar el editor
+                    setTimeout(() => {
+                        initJsonEditor(index, messages.value[index].data.data);
+                    }, 50);
                 });
             }
         };
