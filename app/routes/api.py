@@ -408,7 +408,15 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         await websocket.close(code=1008, reason="Invalid client ID")
         return
     
-    # Asociar este websocket con el client_id
+    # Get subscription details from client_id
+    project_id, subscription_id = client_id.split(":", 1)
+    subscription_info = {
+        "client_id": client_id,
+        "project_id": project_id,
+        "subscription_id": subscription_id
+    }
+    
+    # Associate this websocket with the client_id
     websocket_to_client[websocket] = client_id
     
     print(f"WebSocket connecting for client_id: {client_id}")
@@ -435,7 +443,12 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 if not message_queues[client_id]["messages"].empty():
                     message = message_queues[client_id]["messages"].get_nowait()
                     print(f"Sending message {message_count} to client {client_id}")
-                    await manager.send_message({"type": "message", "data": message}, websocket)
+                    # Send the message with subscription information
+                    await manager.send_message({
+                        "type": "message", 
+                        "data": message,
+                        "subscription": subscription_info  # Include subscription details
+                    }, websocket)
                     message_count += 1
                 
                 # Check for status updates
@@ -453,7 +466,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         print(f"WebSocket disconnected for client_id: {client_id}")
         manager.disconnect(websocket)
         active_connections.remove(websocket)
-        # También eliminar la asociación
+        # Also remove the association
         if websocket in websocket_to_client:
             del websocket_to_client[websocket]
     except Exception as e:
@@ -463,7 +476,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         manager.disconnect(websocket)
         if websocket in active_connections:
             active_connections.remove(websocket)
-        # También eliminar la asociación
+        # Also remove the association
         if websocket in websocket_to_client:
             del websocket_to_client[websocket]
 
@@ -486,6 +499,14 @@ def get_messages(client_id: str, limit: int = 10):
     if client_id not in message_queues:
         raise HTTPException(status_code=404, detail="Client ID not found")
     
+    # Parse subscription details from client_id
+    project_id, subscription_id = client_id.split(":", 1)
+    subscription_info = {
+        "client_id": client_id,
+        "project_id": project_id,
+        "subscription_id": subscription_id
+    }
+    
     # Get messages from the queue without removing them
     try:
         messages = []
@@ -504,7 +525,11 @@ def get_messages(client_id: str, limit: int = 10):
         while not temp_queue.empty():
             message_queues[client_id]["messages"].put(temp_queue.get())
         
-        return {"messages": messages, "total_available": queue_size}
+        return {
+            "messages": messages, 
+            "total_available": queue_size,
+            "subscription_info": subscription_info  # Include subscription info
+        }
     except Exception as e:
         print(f"Error fetching messages: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching messages: {str(e)}") 

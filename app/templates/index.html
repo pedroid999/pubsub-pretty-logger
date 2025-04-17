@@ -279,47 +279,54 @@
                             </button>
                         </div>
                         
-                        <div v-for="(msg, index) in finalFilteredMessages" :key="index" class="message-card">
-                            <div class="message-header" @click="toggleMessageExpanded(index)">
-                                <div class="message-info">
-                                    <span class="message-timestamp">${ formatTimestamp(msg.data.publish_time) }</span>
-                                    <span class="message-type" v-if="getMessageType(msg)">
-                                        ${ getMessageType(msg) }
-                                    </span>
-                                    <span class="message-subscription" v-if="msg.subscription">
-                                        <span class="badge bg-primary">${ msg.subscription.subscription_id }</span>
-                                    </span>
-                                </div>
-                                <div class="message-actions">
-                                    <button class="btn btn-sm btn-link" @click.stop="copyMessageToClipboard(msg)">
-                                        <i class="fas fa-clipboard"></i>
-                                    </button>
-                                    <i class="fas" :class="isMessageExpanded(index) ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                                </div>
+                        <!-- Grouped by subscription -->
+                        <div v-for="(subscription, subscriptionId) in groupedMessages" :key="subscriptionId" class="subscription-group mb-3">
+                            <div class="subscription-header py-2 px-3 mb-2 bg-light rounded">
+                                <span class="badge bg-primary me-2">${ subscription.name }</span>
+                                <small class="text-secondary">${ subscription.project }</small>
+                                <span class="badge bg-secondary ms-2">${ subscription.messages.length } messages</span>
                             </div>
                             
-                            <div class="message-content" v-if="isMessageExpanded(index)">
-                                <div v-if="Object.keys(msg.data.attributes || {}).length > 0" class="message-attributes mb-2">
-                                    <div class="attributes-header">
-                                        <strong>Attributes:</strong>
+                            <div v-for="(msg, msgIndex) in subscription.messages" :key="msg.data.message_id" 
+                                class="message-card" :id="'message-' + getGlobalIndex(subscriptionId, msgIndex)">
+                                <div class="message-header" @click="toggleMessageExpanded(getGlobalIndex(subscriptionId, msgIndex))">
+                                    <div class="message-info">
+                                        <span class="message-timestamp">${ formatTimestamp(msg.data.publish_time) }</span>
+                                        <span class="message-type" v-if="getMessageType(msg)">
+                                            ${ getMessageType(msg) }
+                                        </span>
                                     </div>
-                                    <table class="attributes-table">
-                                        <tr v-for="(value, key) in msg.data.attributes" :key="key">
-                                            <td class="attribute-key">${ key }</td>
-                                            <td class="attribute-value">${ value }</td>
-                                        </tr>
-                                    </table>
+                                    <div class="message-actions">
+                                        <button class="btn btn-sm btn-link" @click.stop="copyMessageToClipboard(msg)">
+                                            <i class="fas fa-clipboard"></i>
+                                        </button>
+                                        <i class="fas" :class="isMessageExpanded(getGlobalIndex(subscriptionId, msgIndex)) ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                    </div>
                                 </div>
                                 
-                                <div class="message-data">
-                                    <div class="data-header">
-                                        <strong>Data:</strong>
+                                <div class="message-content" v-if="isMessageExpanded(getGlobalIndex(subscriptionId, msgIndex))">
+                                    <div v-if="Object.keys(msg.data.attributes || {}).length > 0" class="message-attributes mb-2">
+                                        <div class="attributes-header">
+                                            <strong>Attributes:</strong>
+                                        </div>
+                                        <table class="attributes-table">
+                                            <tr v-for="(value, key) in msg.data.attributes" :key="key">
+                                                <td class="attribute-key">${ key }</td>
+                                                <td class="attribute-value">${ value }</td>
+                                            </tr>
+                                        </table>
                                     </div>
-                                    <div class="json-view" :id="'json-' + index"></div>
-                                </div>
-                                
-                                <div class="message-footer">
-                                    <small>Message ID: ${ msg.data.message_id }</small>
+                                    
+                                    <div class="message-data">
+                                        <div class="data-header">
+                                            <strong>Data:</strong>
+                                        </div>
+                                        <div class="json-view" :id="'json-' + getGlobalIndex(subscriptionId, msgIndex)"></div>
+                                    </div>
+                                    
+                                    <div class="message-footer">
+                                        <small>Message ID: ${ msg.data.message_id }</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>

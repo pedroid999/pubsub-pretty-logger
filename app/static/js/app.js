@@ -425,7 +425,9 @@ const app = createApp({
                     if (data.type === 'message') {
                         console.log(`Received Pub/Sub message for ${client_id}:`, data.data);
                         if (!pauseMessages.value) {
-                            addMessage(data.data, subscription);
+                            // Use the subscription info sent from the backend if available
+                            const messageSubscription = data.subscription || subscription;
+                            addMessage(data.data, messageSubscription);
                         } else {
                             console.log('Message paused, not displaying');
                         }
@@ -518,6 +520,13 @@ const app = createApp({
                     if (data.messages && data.messages.length > 0) {
                         console.log(`Received ${data.messages.length} messages via polling for ${client_id}`);
                         
+                        // Use subscription info from response if available
+                        const subscriptionInfo = data.subscription_info || {
+                            client_id: client_id,
+                            project_id: client_id.split(":")[0],
+                            subscription_id: client_id.split(":")[1]
+                        };
+                        
                         // Only display if not paused
                         if (!pauseMessages.value) {
                             data.messages.forEach(message => {
@@ -528,7 +537,7 @@ const app = createApp({
                                 );
                                 
                                 if (!exists) {
-                                    addMessage(message, subscription);
+                                    addMessage(message, subscriptionInfo);
                                 }
                             });
                         }
@@ -548,35 +557,45 @@ const app = createApp({
         };
 
         const addMessage = (message, subscription = null) => {
+            // Ensure we're using the correct subscription for this message
+            // The subscription should come from the client_id that received the message
+            let messageSubscription = subscription;
+            
             // Add message to front of the array (newest first)
-            messages.value.unshift({
+            const newMessage = {
                 data: message,
                 timestamp: new Date().toISOString(),
-                subscription: subscription // Add the subscription information
-            });
+                subscription: messageSubscription // Use the correct subscription information
+            };
+            
+            // Add message to the beginning of the array
+            messages.value.unshift(newMessage);
+            
+            // Set new message as expanded by default
+            const index = 0; // It's the first one since we just added it
+            expandedMessages.value[index] = true;
             
             // Limit the number of messages if needed
             if (maxMessages.value > 0 && messages.value.length > maxMessages.value) {
                 // Also remove the editor if it exists
                 const removed = messages.value.splice(maxMessages.value);
                 removed.forEach(msg => {
-                    const idx = messages.value.length;
-                    if (jsonEditors.value[`json-${idx}`]) {
-                        jsonEditors.value[`json-${idx}`].destroy();
-                        delete jsonEditors.value[`json-${idx}`];
+                    // Find the global index for this message
+                    for (let i = 0; i < finalFilteredMessages.value.length; i++) {
+                        if (finalFilteredMessages.value[i].data.message_id === msg.data.message_id) {
+                            if (jsonEditors.value[`json-${i}`]) {
+                                jsonEditors.value[`json-${i}`].destroy();
+                                delete jsonEditors.value[`json-${i}`];
+                            }
+                            break;
+                        }
                     }
                 });
             }
             
-            // Close all other messages and auto-expand only the newest one
-            Object.keys(expandedMessages.value).forEach(key => {
-                expandedMessages.value[key] = false;
-            });
-            expandedMessages.value[0] = true;
-            
             // Initialize JSON editor for the new message after DOM update
             nextTick(() => {
-                initJsonEditor(0, message.data);
+                initJsonEditor(index, message.data);
             });
             
             // Auto-scroll if enabled
@@ -605,12 +624,7 @@ const app = createApp({
         const toggleMessageExpanded = (index) => {
             const newValue = !expandedMessages.value[index];
             
-            // First close all messages
-            Object.keys(expandedMessages.value).forEach(key => {
-                expandedMessages.value[key] = false;
-            });
-            
-            // Then open just the clicked one if it was closed
+            // Toggle only the clicked message without affecting others
             expandedMessages.value[index] = newValue;
             
             if (newValue) {
@@ -622,7 +636,8 @@ const app = createApp({
         };
 
         const isMessageExpanded = (index) => {
-            return !!expandedMessages.value[index];
+            // Default to expanded (true) if the state hasn't been explicitly set to false
+            return expandedMessages.value[index] !== false;
         };
 
         const initJsonEditor = (index, data) => {
@@ -836,37 +851,117 @@ const app = createApp({
             return filtered;
         });
 
+        // Group messages by subscription for display
+        const groupedMessages = computed(() => {
+            const groups = {};
+            
+            // First apply filters to get the set of messages we're working with
+            const filtered = finalFilteredMessages.value;
+            
+            // Group messages by subscription
+            filtered.forEach(msg => {
+                if (msg.subscription) {
+                    const subId = msg.subscription.client_id || 'unknown';
+                    
+                    if (!groups[subId]) {
+                        groups[subId] = {
+                            id: subId,
+                            name: msg.subscription.subscription_id || 'Unknown Subscription',
+                            project: msg.subscription.project_id || 'Unknown Project',
+                            messages: []
+                        };
+                    }
+                    
+                    groups[subId].messages.push(msg);
+                } else {
+                    // Handle messages with no subscription info
+                    if (!groups['unknown']) {
+                        groups['unknown'] = {
+                            id: 'unknown',
+                            name: 'Unknown Subscription',
+                            project: 'Unknown Project',
+                            messages: []
+                        };
+                    }
+                    
+                    groups['unknown'].messages.push(msg);
+                }
+            });
+            
+            return groups;
+        });
+        
+        // Helper function to get global index for a message within a subscription
+        const getGlobalIndex = (subscriptionId, messageIndex) => {
+            // Find the absolute position of this message in the filtered messages array
+            const filtered = finalFilteredMessages.value;
+            const subscription = groupedMessages.value[subscriptionId];
+            
+            if (!subscription) return 0;
+            
+            const message = subscription.messages[messageIndex];
+            if (!message) return 0;
+            
+            // Find this message in the filtered list
+            for (let i = 0; i < filtered.length; i++) {
+                if (filtered[i].data.message_id === message.data.message_id) {
+                    return i;
+                }
+            }
+            
+            return 0;
+        };
+
         // Navigate between messages
         const navigateMessage = (direction) => {
             const filtered = finalFilteredMessages.value;
             if (filtered.length === 0) return;
             
-            // Find the currently expanded message index in the filtered list
-            let currentExpandedIndex = -1;
-            for (let i = 0; i < filtered.length; i++) {
-                if (isMessageExpanded(i)) {
-                    currentExpandedIndex = i;
-                    break;
-                }
-            }
+            // Set the new index based on current index and direction
+            let newIndex = currentMessageIndex.value + direction;
             
-            // Calculate the new index
-            let newIndex;
-            if (currentExpandedIndex === -1) {
-                // If no message is expanded, start with the first or last
-                newIndex = direction > 0 ? 0 : filtered.length - 1;
-            } else {
-                newIndex = currentExpandedIndex + direction;
-                // Handle wrapping around the ends
-                if (newIndex < 0) newIndex = filtered.length - 1;
-                if (newIndex >= filtered.length) newIndex = 0;
-            }
+            // Handle wrapping around the ends
+            if (newIndex < 0) newIndex = filtered.length - 1;
+            if (newIndex >= filtered.length) newIndex = 0;
             
             // Update the current message index for display
             currentMessageIndex.value = newIndex;
             
-            // Expand the new message
-            toggleMessageExpanded(newIndex);
+            // Make sure the message is expanded
+            if (!expandedMessages.value[newIndex]) {
+                expandedMessages.value[newIndex] = true;
+                
+                // Initialize JSON editor if needed
+                nextTick(() => {
+                    initJsonEditor(newIndex, filtered[newIndex].data.data);
+                });
+            }
+            
+            // Find the subscription and message to scroll to
+            let targetSubscriptionId = null;
+            let targetMessageIndex = -1;
+            const targetMessage = filtered[newIndex];
+            
+            // Find which subscription group contains this message
+            Object.entries(groupedMessages.value).forEach(([subId, subscription]) => {
+                const msgIndex = subscription.messages.findIndex(
+                    msg => msg.data.message_id === targetMessage.data.message_id
+                );
+                
+                if (msgIndex >= 0) {
+                    targetSubscriptionId = subId;
+                    targetMessageIndex = msgIndex;
+                }
+            });
+            
+            // Scroll to the message
+            nextTick(() => {
+                const messageId = `message-${newIndex}`;
+                const messageElement = document.getElementById(messageId);
+                if (messageElement) {
+                    messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
         };
 
         // Lifecycle hooks
@@ -956,7 +1051,11 @@ const app = createApp({
             selectedProjectIndex,
             selectedSubscriptionIndex,
             handleProjectKeydown,
-            handleSubscriptionKeydown
+            handleSubscriptionKeydown,
+            
+            // Grouped messages
+            groupedMessages,
+            getGlobalIndex
         };
     }
 }).mount('#app'); 
