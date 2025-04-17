@@ -388,7 +388,7 @@
                                             <div class="data-header">
                                                 <strong>Data:</strong>
                                             </div>
-                                            <div class="json-view" :id="'json-' + getGlobalIndex(subscriptionId, msgIndex)"></div>
+                                            <div class="json-view" :class="{'dark-json-view': darkMode}" :id="'json-' + getGlobalIndex(subscriptionId, msgIndex)"></div>
                                         </div>
                                         
                                         <div class="message-footer">

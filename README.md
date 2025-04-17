@@ -17,6 +17,12 @@ A beautiful, colorful, and dynamic tool for monitoring Google Cloud Pub/Sub mess
 - 🔍 **Attribute Display**: Shows both message data and message attributes
 - 🌐 **Cross-Platform**: Works on Windows, macOS, and Linux
 - 🖥️ **Web Interface**: Beautiful and intuitive web interface with Vue.js and FastAPI
+- 📤 **Message Publishing**: Send messages to Pub/Sub topics directly from the web interface
+- 🌓 **Dark Mode**: Toggle between light and dark themes for comfortable viewing
+- 📱 **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
+- 🧭 **Message Navigation**: Easily browse through messages with sticky navigation controls
+- ↔️ **Customizable Layout**: Resize the sidebar to optimize your workspace
+- 🔄 **Multiple Subscriptions**: Connect to and monitor multiple Pub/Sub subscriptions simultaneously
 
 ## 🏗️ Technical Architecture
 
@@ -297,8 +303,19 @@ To use the web interface, follow these steps:
    - Use the sidebar controls to filter, pause/resume, or clear messages
    - Click on any message to expand and view its contents
    - Toggle between light and dark mode using the switch in the header
+   - Publish messages to any Pub/Sub topic using the publishing panel in the sidebar
 
 The web server features hot reloading, so any changes to the code will automatically restart the server.
+
+### Publishing Messages
+
+The web interface includes a powerful Pub/Sub publishing feature:
+
+- 🔍 **Project and Topic Autocomplete**: Easily find and select your GCP projects and topics
+- 📝 **JSON Editor**: Write your message payload with proper JSON formatting
+- 🚀 **One-Click Publishing**: Send messages directly to Pub/Sub topics
+- 📨 **Success Confirmation**: Get immediate feedback on successful message delivery
+- 🔄 **Testing Workflows**: Test your entire Pub/Sub workflow by publishing and then viewing the received message
 
 ### Dark Mode
 
@@ -344,6 +361,18 @@ Connect to and monitor multiple Pub/Sub subscriptions simultaneously:
 - e46676d: Add Pub/Sub publishing functionality and sidebar resizer
 - 7c65a20: Enhance mobile responsiveness and UI transitions
 - f07ad59: Enhance WebSocket and message handling with subscription details
+- 0044d55: Enhance autocomplete functionality with keyboard navigation support
+- 98a51fb: Add GCP project and subscription management with autocomplete feature
+- 6120e28: Implement dark mode feature with toggle functionality
+
+### New Features
+
+- 🧭 **Fixed Message Navigation**: Sticky message navigation that remains visible while scrolling through messages
+- 📤 **Pub/Sub Publishing**: Send messages directly to Pub/Sub topics from the web interface
+- ↔️ **Resizable Sidebar**: Customize your workspace by adjusting the sidebar width
+- 🎮 **Keyboard Navigation**: Navigate through autocomplete suggestions using keyboard controls
+- 🌑 **Enhanced Dark Mode**: Improved dark mode support for JSONEditor with better readability and contrast
+- 📱 **Improved Mobile Responsiveness**: Better layout and user experience on smaller screens and devices
 
 ## 🤝 Contributing
 

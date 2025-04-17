@@ -703,6 +703,183 @@ main {
     background-color: #333;
 }
 
+/* JSONEditor dark mode styles */
+.dark-mode .jsoneditor {
+    border-color: #444 !important;
+    background-color: #1e1e1e !important;
+}
+
+.dark-mode .jsoneditor-menu {
+    background-color: #2a2a2a !important;
+    border-bottom: 1px solid #444 !important;
+}
+
+.dark-mode .jsoneditor-search input {
+    background-color: #333 !important;
+    color: #e0e0e0 !important;
+}
+
+.dark-mode div.jsoneditor-tree,
+.dark-mode div.jsoneditor-tree-inner {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0 !important;
+}
+
+.dark-mode div.jsoneditor-field,
+.dark-mode div.jsoneditor-value {
+    color: #e0e0e0 !important;
+}
+
+.dark-mode div.jsoneditor-value.jsoneditor-string {
+    color: #89ca78 !important;
+}
+
+.dark-mode div.jsoneditor-value.jsoneditor-number {
+    color: #b392f0 !important;
+}
+
+.dark-mode div.jsoneditor-value.jsoneditor-boolean {
+    color: #f97583 !important;
+}
+
+.dark-mode div.jsoneditor-value.jsoneditor-null {
+    color: #79b8ff !important;
+}
+
+.dark-mode .jsoneditor-navigation-bar {
+    background-color: #2a2a2a !important;
+    border-bottom: 1px solid #444 !important;
+    color: #e0e0e0 !important;
+}
+
+.dark-mode .json-view {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0 !important;
+}
+
+/* Collapse animation */
+.collapse-enter-active,
+.collapse-leave-active {
+    transition: all 0.3s ease;
+    max-height: 1500px;
+    overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    border-top: none;
+    overflow: hidden;
+}
+
+/* Ensure message content is properly hidden when collapsed */
+.message-content {
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Ensure the card doesn't maintain black space */
+.message-card {
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Fix for dark mode transitions */
+.dark-mode .collapse-enter-active,
+.dark-mode .collapse-leave-active {
+    transition: all 0.3s ease;
+}
+
+/* Ensure proper spacing when expanded */
+.message-card .message-header {
+    border-bottom: none;
+}
+
+.message-card .message-header + .message-content {
+    border-top: 1px solid #e0e0e0;
+}
+
+.dark-mode .message-card .message-header + .message-content {
+    border-top: 1px solid #444;
+}
+
+/* Sidebar resizer */
+.sidebar-resizer {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    cursor: ew-resize;
+    background: transparent;
+    z-index: 200;
+    transition: background 0.2s;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizing .sidebar-resizer {
+    background: rgba(66,133,244,0.15);
+}
+
+body.sidebar-resizing {
+    user-select: none;
+    cursor: ew-resize;
+}
+
+.dark-json-view {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0 !important;
+}
+
+.dark-json-view .jsoneditor {
+    border-color: #444 !important;
+    background-color: #1e1e1e !important;
+}
+
+.dark-json-view .jsoneditor-menu {
+    background-color: #2a2a2a !important;
+    border-bottom: 1px solid #444 !important;
+}
+
+.dark-json-view div.jsoneditor-tree,
+.dark-json-view div.jsoneditor-tree-inner {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0 !important;
+}
+
+.dark-json-view div.jsoneditor-field,
+.dark-json-view div.jsoneditor-value {
+    color: #e0e0e0 !important;
+}
+
+.dark-json-view div.jsoneditor-value.jsoneditor-string {
+    color: #89ca78 !important;
+}
+
+.dark-json-view div.jsoneditor-value.jsoneditor-number {
+    color: #b392f0 !important;
+}
+
+.dark-json-view div.jsoneditor-value.jsoneditor-boolean {
+    color: #f97583 !important;
+}
+
+.dark-json-view div.jsoneditor-value.jsoneditor-null {
+    color: #79b8ff !important;
+}
+
+.dark-json-view .jsoneditor-navigation-bar {
+    background-color: #2a2a2a !important;
+    border-bottom: 1px solid #444 !important;
+    color: #e0e0e0 !important;
+}
+
 /* Collapse animation */
 .collapse-enter-active,
 .collapse-leave-active {
