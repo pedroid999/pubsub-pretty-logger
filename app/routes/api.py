@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, WebSocke
 from pydantic import BaseModel
 import json
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 import os
 from google.cloud import pubsub_v1
 from google.cloud.resourcemanager_v3 import ProjectsClient, ListProjectsRequest, Project
@@ -43,6 +43,20 @@ class Subscription(BaseModel):
     id: str
     name: str
     topic: str
+   
+# Model for Pub/Sub topics
+class Topic(BaseModel):
+    id: str
+    name: Optional[str] = None
+
+# Model for publish requests
+class PublishRequest(BaseModel):
+    project_id: str
+    topic_id: str
+    # Message payload: raw string or JSON object
+    data: Union[str, Dict[str, Any]]
+    # Optional attributes as key/value pairs
+    attributes: Optional[Dict[str, str]] = None
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -280,6 +294,74 @@ def get_subscriptions(project_id: str):
     """Get available Pub/Sub subscriptions for a project"""
     subscriptions = get_pubsub_subscriptions(project_id)
     return {"subscriptions": subscriptions}
+    
+# Pub/Sub topics listing (API then gcloud fallback)
+def get_pubsub_topics_api(project_id: str):
+    """Get Pub/Sub topics for a project using the Google Cloud Pub/Sub API"""
+    try:
+        publisher = pubsub_v1.PublisherClient()
+        project_path = f"projects/{project_id}"
+        topics = []
+        for topic in publisher.list_topics(request={"project": project_path}):
+            topic_id = topic.name.split('/')[-1]
+            topics.append({"id": topic_id, "name": topic_id})
+        return topics
+    except Exception as e:
+        print(f"Error retrieving topics via API: {e}")
+        return []
+
+def get_pubsub_topics_gcloud(project_id: str):
+    """Get Pub/Sub topics for a project using the gcloud CLI"""
+    try:
+        cmd = ["gcloud", "pubsub", "topics", "list", f"--project={project_id}", "--format=json"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        topics_data = json.loads(result.stdout)
+        topics = []
+        for t in topics_data:
+            topic_id = t.get("name", "").split('/')[-1]
+            topics.append({"id": topic_id, "name": topic_id})
+        return topics
+    except Exception as e:
+        print(f"Error retrieving topics via gcloud: {e}")
+        return []
+
+def get_pubsub_topics(project_id: str):
+    """Get Pub/Sub topics for a project using API then gcloud fallback"""
+    topics = get_pubsub_topics_api(project_id)
+    if not topics:
+        topics = get_pubsub_topics_gcloud(project_id)
+    return topics
+
+@router.get("/topics/{project_id}")
+def list_topics(project_id: str):
+    """Get available Pub/Sub topics for a project"""
+    topics = get_pubsub_topics(project_id)
+    return {"topics": topics}
+
+@router.post("/publish")
+async def publish_message(request: PublishRequest):
+    """Publish a message to a Pub/Sub topic."""
+    try:
+        # Initialize Publisher client
+        publisher = pubsub_v1.PublisherClient()
+        # Build full topic path
+        topic_path = publisher.topic_path(request.project_id, request.topic_id)
+        # Prepare payload
+        payload = None
+        if isinstance(request.data, (dict, list)):
+            payload = json.dumps(request.data).encode('utf-8')
+        else:
+            payload = str(request.data).encode('utf-8')
+        # Publish with optional attributes
+        if request.attributes:
+            future = publisher.publish(topic_path, payload, **request.attributes)
+        else:
+            future = publisher.publish(topic_path, payload)
+        message_id = future.result()
+        return {"message_id": message_id}
+    except Exception as e:
+        print(f"Error publishing message: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/connect")
 async def connect_to_pubsub(config: PubSubConfig, background_tasks: BackgroundTasks):

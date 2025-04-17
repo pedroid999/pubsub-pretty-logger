@@ -169,7 +169,71 @@
                                 ${ connectionError }
                             </div>
                         </div>
-                        
+
+                        <!-- Publish Panel -->
+                        <div class="px-3 mb-3">
+                            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-2 text-body-secondary text-uppercase">
+                                <span>Publish</span>
+                                <button class="btn btn-sm btn-outline-primary" @click="showPublishForm = !showPublishForm">
+                                    <i class="fas" :class="showPublishForm ? 'fa-minus' : 'fa-plus'"></i>
+                                </button>
+                            </h6>
+                            <div v-if="showPublishForm">
+                                <form @submit.prevent="publishToPubSub">
+                                    <div class="mb-2">
+                                        <label for="pubProjectId" class="form-label">Project ID</label>
+                                        <div class="autocomplete-container">
+                                            <input type="text" class="form-control form-control-sm" id="pubProjectId"
+                                                v-model="pubConfig.project_id"
+                                                @focus="fetchPublishProjects"
+                                                @input="pubProjectInputChanged"
+                                                @keydown.stop="handlePubProjectKeydown"
+                                                autocomplete="off"
+                                                required>
+                                            <div class="autocomplete-items" v-if="showPubProjectSuggestions && filteredPublishProjects.length > 0">
+                                                <div v-for="(project, index) in filteredPublishProjects"
+                                                    :key="project.id"
+                                                    class="autocomplete-item"
+                                                    :class="{ 'autocomplete-active': index === selectedPubProjectIndex }"
+                                                    @click="selectPubProject(project)">
+                                                    <strong>${ project.id }</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="pubTopicId" class="form-label">Topic ID</label>
+                                        <div class="autocomplete-container">
+                                            <input type="text" class="form-control form-control-sm" id="pubTopicId"
+                                                v-model="pubConfig.topic_id"
+                                                @focus="fetchTopics"
+                                                @input="pubTopicInputChanged"
+                                                @keydown.stop="handlePubTopicKeydown"
+                                                autocomplete="off"
+                                                required>
+                                            <div class="autocomplete-items" v-if="showTopicSuggestions && filteredTopics.length > 0">
+                                                <div v-for="(topic, index) in filteredTopics"
+                                                    :key="topic.id"
+                                                    class="autocomplete-item"
+                                                    :class="{ 'autocomplete-active': index === selectedTopicIndex }"
+                                                    @click="selectTopic(topic)">
+                                                    <strong>${ topic.id }</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label for="pubMessageBody" class="form-label">Message</label>
+                                        <textarea class="form-control form-control-sm" id="pubMessageBody"
+                                            v-model="publishMessageBody" rows="3" placeholder="Enter message JSON or text" required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-primary w-100">
+                                        <i class="fas fa-paper-plane me-1"></i> Publish
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
                         <hr>
                         
                         <div class="px-3">
@@ -237,6 +301,7 @@
                             </div>
                         </div>
                     </div>
+                    <div class="sidebar-resizer" @mousedown="startSidebarResize"></div>
                 </nav>
 
                 <!-- Main content -->

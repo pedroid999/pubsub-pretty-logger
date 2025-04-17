@@ -295,6 +295,200 @@ const app = createApp({
         };
 
         const showNewSubscriptionForm = ref(true);
+        // Publish panel state
+        const showPublishForm = ref(false);
+        const pubConfig = ref({ project_id: '', topic_id: '' });
+        const publishMessageBody = ref('');
+        
+        // Autocomplete state for publish panel
+        const pubProjects = ref([]);
+        const filteredPublishProjects = ref([]);
+        const showPubProjectSuggestions = ref(false);
+        const loadingPubProjects = ref(false);
+        const selectedPubProjectIndex = ref(-1);
+        
+        const topics = ref([]);
+        const filteredTopics = ref([]);
+        const showTopicSuggestions = ref(false);
+        const loadingTopics = ref(false);
+        const selectedTopicIndex = ref(-1);
+        
+        // Publish panel methods
+        const fetchPublishProjects = async () => {
+            if (pubProjects.value.length > 0) {
+                showPubProjectSuggestions.value = true;
+                selectedPubProjectIndex.value = -1;
+                return;
+            }
+            loadingPubProjects.value = true;
+            showPubProjectSuggestions.value = false;
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                pubProjects.value = data.projects || [];
+                filteredPublishProjects.value = [...pubProjects.value];
+                if (pubProjects.value.length > 0) {
+                    showPubProjectSuggestions.value = true;
+                    selectedPubProjectIndex.value = -1;
+                }
+            } catch (error) {
+                console.error('Error fetching projects for publish:', error);
+                showToast('Error', 'Failed to fetch GCP projects for publish', 'fa-exclamation-circle');
+            } finally {
+                loadingPubProjects.value = false;
+            }
+        };
+
+        const pubProjectInputChanged = () => {
+            if (!pubConfig.value.project_id) {
+                showPubProjectSuggestions.value = false;
+                return;
+            }
+            const query = pubConfig.value.project_id.toLowerCase();
+            filteredPublishProjects.value = pubProjects.value.filter(project =>
+                project.id.toLowerCase().includes(query) ||
+                (project.name && project.name.toLowerCase().includes(query))
+            );
+            showPubProjectSuggestions.value = filteredPublishProjects.value.length > 0;
+            selectedPubProjectIndex.value = -1;
+        };
+
+        const handlePubProjectKeydown = (event) => {
+            if (!showPubProjectSuggestions.value || filteredPublishProjects.value.length === 0) return;
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (selectedPubProjectIndex.value < filteredPublishProjects.value.length - 1) {
+                    selectedPubProjectIndex.value++;
+                } else {
+                    selectedPubProjectIndex.value = 0;
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (selectedPubProjectIndex.value > 0) {
+                    selectedPubProjectIndex.value--;
+                } else {
+                    selectedPubProjectIndex.value = filteredPublishProjects.value.length - 1;
+                }
+            } else if (event.key === 'Enter' && selectedPubProjectIndex.value >= 0) {
+                event.preventDefault();
+                selectPubProject(filteredPublishProjects.value[selectedPubProjectIndex.value]);
+            } else if (event.key === 'Escape') {
+                showPubProjectSuggestions.value = false;
+            }
+        };
+
+        const selectPubProject = (project) => {
+            pubConfig.value.project_id = project.id;
+            showPubProjectSuggestions.value = false;
+            selectedPubProjectIndex.value = -1;
+            // Clear topics when project changes
+            topics.value = [];
+            filteredTopics.value = [];
+            pubConfig.value.topic_id = '';
+        };
+
+        const fetchTopics = async () => {
+            if (!pubConfig.value.project_id) {
+                showToast('Info', 'Please select a project first', 'fa-info-circle');
+                return;
+            }
+            if (topics.value.length > 0) {
+                showTopicSuggestions.value = true;
+                selectedTopicIndex.value = -1;
+                return;
+            }
+            loadingTopics.value = true;
+            showTopicSuggestions.value = false;
+            try {
+                const response = await fetch(`/api/topics/${pubConfig.value.project_id}`);
+                const data = await response.json();
+                topics.value = data.topics || [];
+                filteredTopics.value = [...topics.value];
+                if (topics.value.length > 0) {
+                    showTopicSuggestions.value = true;
+                    selectedTopicIndex.value = -1;
+                }
+            } catch (error) {
+                console.error('Error fetching topics:', error);
+                showToast('Error', 'Failed to fetch Pub/Sub topics', 'fa-exclamation-circle');
+            } finally {
+                loadingTopics.value = false;
+            }
+        };
+
+        const pubTopicInputChanged = () => {
+            if (!pubConfig.value.topic_id) {
+                showTopicSuggestions.value = false;
+                return;
+            }
+            const query = pubConfig.value.topic_id.toLowerCase();
+            filteredTopics.value = topics.value.filter(topic =>
+                topic.id.toLowerCase().includes(query) ||
+                (topic.name && topic.name.toLowerCase().includes(query))
+            );
+            showTopicSuggestions.value = filteredTopics.value.length > 0;
+            selectedTopicIndex.value = -1;
+        };
+
+        const handlePubTopicKeydown = (event) => {
+            if (!showTopicSuggestions.value || filteredTopics.value.length === 0) return;
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (selectedTopicIndex.value < filteredTopics.value.length - 1) {
+                    selectedTopicIndex.value++;
+                } else {
+                    selectedTopicIndex.value = 0;
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (selectedTopicIndex.value > 0) {
+                    selectedTopicIndex.value--;
+                } else {
+                    selectedTopicIndex.value = filteredTopics.value.length - 1;
+                }
+            } else if (event.key === 'Enter' && selectedTopicIndex.value >= 0) {
+                event.preventDefault();
+                selectTopic(filteredTopics.value[selectedTopicIndex.value]);
+            } else if (event.key === 'Escape') {
+                showTopicSuggestions.value = false;
+            }
+        };
+
+        const selectTopic = (topic) => {
+            pubConfig.value.topic_id = topic.id;
+            showTopicSuggestions.value = false;
+            selectedTopicIndex.value = -1;
+        };
+
+        const publishToPubSub = async () => {
+            try {
+                let payload;
+                try {
+                    payload = JSON.parse(publishMessageBody.value);
+                } catch {
+                    payload = publishMessageBody.value;
+                }
+                const response = await fetch('/api/publish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_id: pubConfig.value.project_id,
+                        topic_id: pubConfig.value.topic_id,
+                        data: payload
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    showToast('Published', `Message ID: ${data.message_id}`, 'fa-check-circle');
+                    publishMessageBody.value = '';
+                } else {
+                    showToast('Error', data.detail || 'Failed to publish message', 'fa-exclamation-circle');
+                }
+            } catch (error) {
+                console.error('Error publishing message:', error);
+                showToast('Error', 'Network error while publishing message', 'fa-exclamation-circle');
+            }
+        };
 
         const connectToPubSub = async () => {
             if (isConnecting.value) return;
@@ -971,6 +1165,38 @@ const app = createApp({
             });
         };
 
+        // Sidebar width and resizer logic
+        const sidebarWidth = ref(localStorage.getItem('sidebarWidth') || '320px');
+        watch(sidebarWidth, (val) => {
+            document.documentElement.style.setProperty('--sidebar-width', val);
+            localStorage.setItem('sidebarWidth', val);
+        });
+        onMounted(() => {
+            document.documentElement.style.setProperty('--sidebar-width', sidebarWidth.value);
+        });
+        let resizing = false;
+        const startSidebarResize = (e) => {
+            resizing = true;
+            document.body.classList.add('sidebar-resizing');
+            const startX = e.clientX;
+            const sidebar = document.querySelector('.sidebar');
+            const startWidth = parseInt(getComputedStyle(sidebar).width, 10);
+            const onMouseMove = (moveEvent) => {
+                if (!resizing) return;
+                let newWidth = startWidth + (moveEvent.clientX - startX);
+                newWidth = Math.max(200, Math.min(600, newWidth));
+                sidebarWidth.value = newWidth + 'px';
+            };
+            const onMouseUp = () => {
+                resizing = false;
+                document.body.classList.remove('sidebar-resizing');
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        };
+
         // Lifecycle hooks
         onMounted(() => {
             loadDefaultConfig();
@@ -1019,8 +1245,30 @@ const app = createApp({
             finalFilteredMessages,
             activeSubscriptions,
             showNewSubscriptionForm,
+            // Publish panel state
+            showPublishForm,
+            pubConfig,
+            publishMessageBody,
+            fetchPublishProjects,
+            pubProjectInputChanged,
+            handlePubProjectKeydown,
+            selectPubProject,
+            fetchTopics,
+            pubTopicInputChanged,
+            handlePubTopicKeydown,
+            selectTopic,
+            publishToPubSub,
+            pubProjects,
+            filteredPublishProjects,
+            showPubProjectSuggestions,
+            loadingPubProjects,
+            selectedPubProjectIndex,
+            topics,
+            filteredTopics,
+            showTopicSuggestions,
+            loadingTopics,
+            selectedTopicIndex,
             selectedSubscription,
-            
             // Autocomplete state
             projects,
             subscriptions,
@@ -1030,7 +1278,6 @@ const app = createApp({
             showSubscriptionSuggestions,
             loadingProjects,
             loadingSubscriptions,
-            
             // Existing methods
             connectToPubSub,
             disconnectSubscription,
@@ -1045,7 +1292,6 @@ const app = createApp({
             hideToast,
             navigateMessage,
             toggleDarkMode,
-            
             // Autocomplete methods
             fetchProjects,
             fetchSubscriptions,
@@ -1053,16 +1299,17 @@ const app = createApp({
             subscriptionInputChanged,
             selectProject,
             selectSubscription,
-            
             // Keyboard navigation
             selectedProjectIndex,
             selectedSubscriptionIndex,
             handleProjectKeydown,
             handleSubscriptionKeydown,
-            
             // Grouped messages
             groupedMessages,
-            getGlobalIndex
+            getGlobalIndex,
+            // Sidebar width and resizer logic
+            sidebarWidth,
+            startSidebarResize
         };
     }
 }).mount('#app'); 
