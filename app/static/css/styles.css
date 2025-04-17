@@ -95,26 +95,61 @@ main {
 
 /* Message navigation */
 .message-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 24px auto 18px auto;
+    padding: 8px 32px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    width: fit-content;
+    max-width: 480px;
+    transition: background 0.2s, border 0.2s;
     position: sticky;
     top: 10px;
-    z-index: 10;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 15px;
-    padding: 8px;
-    background-color: rgba(255, 255, 255, 0.9);
-    border-radius: 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    width: fit-content;
-    margin-left: auto;
-    margin-right: auto;
+    z-index: 100;
 }
 
-.message-counter {
-    font-size: 0.85rem;
+.message-navigation button {
+    background: #fff;
+    color: #333;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 4px 16px;
+    font-size: 1rem;
     font-weight: 500;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+    outline: none;
+}
+
+.message-navigation button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.message-navigation .message-counter {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.dark-mode .message-navigation {
+    background: #23272e;
+    border: 1px solid #444;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+
+.dark-mode .message-navigation button {
+    background: #181a1b;
+    color: #e0e0e0;
+    border: 1px solid #444;
+}
+
+.dark-mode .message-navigation .message-counter {
+    color: #e0e0e0;
 }
 
 /* Subscription Groups */
