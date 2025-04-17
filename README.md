@@ -335,6 +335,16 @@ Connect to and monitor multiple Pub/Sub subscriptions simultaneously:
 
 ![Notification Example](images/notification.png)
 
+## 🔄 Recent Changes
+
+### Latest Commits (as of 2025-04-17)
+
+- 6ca94ad: Refactor message navigation styles for improved UI and responsiveness
+- 4f7362e: Update layout and styles for improved sidebar and main content responsiveness
+- e46676d: Add Pub/Sub publishing functionality and sidebar resizer
+- 7c65a20: Enhance mobile responsiveness and UI transitions
+- f07ad59: Enhance WebSocket and message handling with subscription details
+
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to open issues or submit pull requests.
