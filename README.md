@@ -188,9 +188,7 @@ You can specify a different port if needed:
 
 ```bash
 uv run pubsub_logger.py --web --port=8080
-```
-
-### With command line options
+```### With command line options
 
 ```bash
 # Single subscription
@@ -379,3 +377,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Vue.js](https://vuejs.org/) for the reactive web interface
 - [JSONEditor](https://github.com/josdejong/jsoneditor) for JSON visualization 
 - [uv](https://astral.sh/uv) for fast, reliable Python package management 
+
