@@ -47,7 +47,30 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 irm https://astral.sh/uv/install.ps1 | iex
 ```
 
-### Quick Start
+### Using Quickstart Script (Recommended)
+
+On macOS/Linux, you can use the provided quickstart script to set up everything automatically:
+
+```bash
+# Clone this repository
+git clone https://github.com/pedroid999/pubsub-pretty-logger.git
+cd pubsub-pretty-logger
+
+# Make the script executable
+chmod +x ./quickstart.sh
+
+# Run the quickstart script
+./quickstart.sh
+```
+
+The script will:
+- Check if uv is installed
+- Create and activate a virtual environment
+- Install all dependencies
+- Create a .env file from the template if it doesn't exist
+- Start the web interface automatically
+
+### Manual Setup
 
 1. Clone this repository:
    ```bash
