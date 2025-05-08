@@ -9,7 +9,8 @@ const app = createApp({
     ...window.vueDelimiters,
     // Register components for transitions
     components: {
-        'transition': Transition
+        'transition': Transition,
+        'transition-group': Vue.TransitionGroup
     },
     setup() {
         // State
@@ -58,12 +59,13 @@ const app = createApp({
             darkMode.value = !darkMode.value;
             if (darkMode.value) {
                 document.body.classList.add('dark-mode');
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121212');
             } else {
                 document.body.classList.remove('dark-mode');
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f8f9fa');
             }
             // Save preference to localStorage
             localStorage.setItem('darkMode', darkMode.value ? 'true' : 'false');
-            
             // Update JSON editors theme if they exist
             Object.keys(jsonEditors.value).forEach(index => {
                 if (jsonEditors.value[index]) {
@@ -85,6 +87,9 @@ const app = createApp({
             if (savedMode === 'true') {
                 darkMode.value = true;
                 document.body.classList.add('dark-mode');
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#121212');
+            } else {
+                document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f8f9fa');
             }
         };
 

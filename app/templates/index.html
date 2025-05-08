@@ -12,6 +12,35 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/tokyo-night-dark.min.css">
     <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <style>
+        html { scroll-behavior: smooth; }
+        .card-glass {
+            background: rgba(255,255,255,0.85);
+            box-shadow: 0 4px 24px rgba(60,60,60,0.07);
+            border-radius: 18px;
+            backdrop-filter: blur(7px);
+        }
+        .dark-mode .card-glass {
+            background: rgba(30,30,30,0.85);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+        }
+        .focus-ring:focus {
+            outline: 2px solid var(--primary-color) !important;
+            outline-offset: 2px;
+        }
+        .btn-animated:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(60,60,60,0.07);
+        }
+        .fade-slide-enter-active, .fade-slide-leave-active {
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .fade-slide-enter-from, .fade-slide-leave-to {
+            opacity: 0;
+            transform: translateY(16px);
+        }
+    </style>
     
     <!-- Vue 3 -->
     <script src="https://unpkg.com/vue@3.3.11/dist/vue.global.prod.js"></script>
@@ -33,11 +62,11 @@
         };
     </script>
 </head>
-<body>
+<body style="font-family: 'Inter', system-ui, sans-serif; background: var(--light-bg); color: var(--text-color)">
     <div id="app">
-        <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
-            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="#">
-                <i class="fas fa-broadcast-tower me-1 d-none d-sm-inline-block"></i> Pub/Sub Logger
+        <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow card-glass" style="backdrop-filter: blur(8px);">
+            <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-5 fw-bold d-flex align-items-center gap-2" href="#">
+                <i class="fas fa-broadcast-tower"></i> <span class="d-none d-sm-inline">Pub/Sub Logger</span>
             </a>
             <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" 
                     @click="toggleSidebar" aria-controls="sidebarMenu" 
@@ -48,13 +77,13 @@
             <div class="navbar-nav flex-row">
                 <!-- Theme Toggle Button -->
                 <div class="nav-item me-2 me-md-3">
-                    <button class="theme-toggle btn" @click="toggleDarkMode">
+                    <button class="theme-toggle btn btn-outline-secondary btn-animated focus-ring" @click="toggleDarkMode" :aria-label="darkMode ? 'Switch to light mode' : 'Switch to dark mode'">
                         <i class="icon fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
-                        <span class="d-none d-md-inline">${ darkMode ? 'Light' : 'Dark' }</span>
+                        <span class="d-none d-md-inline ms-1">${ darkMode ? 'Light' : 'Dark' }</span>
                     </button>
                 </div>
                 <div class="nav-item text-nowrap">
-                    <button class="nav-link px-2 px-md-3 btn d-md-none" @click="clearMessages">
+                    <button class="nav-link px-2 px-md-3 btn btn-outline-danger btn-animated d-md-none focus-ring" @click="clearMessages" aria-label="Clear all messages">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -64,32 +93,34 @@
         <div class="container-fluid">
             <div class="main-flex-row d-flex">
                 <!-- Sidebar -->
-                <nav id="sidebarMenu" class="sidebar collapse" :class="{ show: sidebarVisible }">
+                <nav id="sidebarMenu" class="sidebar collapse card-glass" :class="{ show: sidebarVisible }" style="border-right: 1px solid var(--border-color); min-height: 100vh;">
                     <div class="position-sticky pt-md-3 sidebar-sticky">
                         <div class="px-3 mb-3">
                             <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-2 mt-md-4 mb-2 text-body-secondary text-uppercase">
-                                <span>Subscriptions</span>
-                                <button class="btn btn-sm btn-outline-primary" @click="showNewSubscriptionForm = true" v-if="!showNewSubscriptionForm">
+                                <span><i class="fas fa-list-ul me-2"></i>Subscriptions</span>
+                                <button class="btn btn-sm btn-outline-primary btn-animated focus-ring" @click="showNewSubscriptionForm = true" v-if="!showNewSubscriptionForm" aria-label="Add new subscription">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </h6>
                             
                             <!-- Active subscriptions list -->
                             <div v-if="activeSubscriptions.length > 0" class="subscriptions-list mb-3">
-                                <div v-for="(sub, index) in activeSubscriptions" :key="sub.client_id" class="subscription-item mb-2 p-2 border rounded">
+                                <transition-group name="fade-slide" tag="div">
+                                <div v-for="(sub, index) in activeSubscriptions" :key="sub.client_id" class="subscription-item mb-2 p-2 border rounded card-glass shadow-sm">
                                     <div class="d-flex justify-content-between align-items-center flex-wrap">
                                         <div class="subscription-info me-2 mb-1 mb-sm-0">
                                             <div class="fw-bold text-break">${ sub.subscription_id }</div>
                                             <div class="small text-secondary text-truncate">${ sub.project_id }</div>
                                         </div>
-                                        <div class="subscription-actions d-flex align-items-center">
+                                        <div class="subscription-actions d-flex align-items-center gap-1">
                                             <span class="badge bg-success me-2">Connected</span>
-                                            <button class="btn btn-sm btn-outline-danger" @click="disconnectSubscription(sub.client_id)" aria-label="Disconnect">
+                                            <button class="btn btn-sm btn-outline-danger btn-animated focus-ring" @click="disconnectSubscription(sub.client_id)" aria-label="Disconnect">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
+                                </transition-group>
                             </div>
                             
                             <!-- New subscription form -->
@@ -97,7 +128,7 @@
                                 <form @submit.prevent="connectToPubSub">
                                     <!-- Project ID with autocomplete -->
                                     <div class="mb-3">
-                                        <label for="projectId" class="form-label">Project ID</label>
+                                        <label for="projectId" class="form-label fw-semibold">Project ID</label>
                                         <div class="autocomplete-container">
                                             <input type="text" class="form-control" id="projectId" 
                                                 v-model="config.project_id" 
@@ -150,7 +181,7 @@
                                     </div>
                                     
                                     <div class="d-flex flex-column flex-sm-row">
-                                        <button type="submit" class="btn btn-primary flex-grow-1 mb-2 mb-sm-0" :disabled="isConnecting">
+                                        <button type="submit" class="btn btn-primary flex-grow-1 mb-2 mb-sm-0 btn-animated focus-ring" :disabled="isConnecting">
                                             <i class="fas fa-plug me-2"></i>
                                             <span v-if="isConnecting">Connecting...</span>
                                             <span v-else>Connect</span>
@@ -165,8 +196,8 @@
                                 </form>
                             </div>
                             
-                            <div v-if="connectionError" class="alert alert-danger mt-3">
-                                ${ connectionError }
+                            <div v-if="connectionError" class="alert alert-danger mt-3 animate__animated animate__shakeX">
+                                <i class="fas fa-exclamation-triangle me-2"></i>${ connectionError }
                             </div>
                         </div>
 
@@ -306,8 +337,14 @@
 
                 <!-- Main content -->
                 <main class="main-content flex-grow-1 px-md-4">
+                    <div class="alert alert-info d-flex align-items-center gap-2 mt-3 mb-4 shadow-sm card-glass" role="alert" style="font-size:1rem;">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Tip:</strong> Use the sidebar to manage subscriptions and publish messages. Switch between Light/Dark mode for your comfort!
+                        </div>
+                    </div>
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                        <h1 class="h2">
+                        <h1 class="h2 fw-bold">
                             <i class="fas fa-broadcast-tower me-2"></i> 
                             Message Log
                         </h1>
@@ -325,11 +362,11 @@
                     </div>
 
                     <!-- Message area -->
-                    <div class="messages-container" id="messages-container" ref="messagesContainer">
+                    <div class="messages-container card-glass shadow-sm" id="messages-container" ref="messagesContainer" style="min-height: 300px;">
                         <div v-if="messages.length === 0" class="empty-state">
-                            <div class="text-center p-5">
+                            <div class="text-center p-5 animate__animated animate__fadeIn">
                                 <i class="fas fa-inbox fa-4x mb-3 text-secondary"></i>
-                                <h3>No messages yet</h3>
+                                <h3 class="fw-semibold">No messages yet</h3>
                                 <p class="text-secondary">Connect to a Pub/Sub subscription to see messages here.</p>
                             </div>
                         </div>
@@ -346,8 +383,9 @@
                         </div>
                         
                         <!-- Grouped by subscription -->
+                        <transition-group name="fade-slide" tag="div">
                         <div v-for="(subscription, subscriptionId) in groupedMessages" :key="subscriptionId" class="subscription-group mb-3">
-                            <div class="subscription-header py-2 px-3 mb-2 bg-light rounded">
+                            <div class="subscription-header py-2 px-3 mb-2 bg-light rounded d-flex align-items-center gap-2 card-glass">
                                 <span class="badge bg-primary me-2">${ subscription.name }</span>
                                 <small class="text-secondary">${ subscription.project }</small>
                                 <span class="badge bg-secondary ms-2">${ subscription.messages.length } messages</span>
@@ -404,8 +442,8 @@
         </div>
         
         <!-- Toast notification -->
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div class="toast" ref="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+            <div class="toast card-glass shadow-lg animate__animated animate__fadeInUp" ref="toast" role="alert" aria-live="assertive" aria-atomic="true">
                 <div class="toast-header">
                     <i class="fas" :class="toastIcon"></i>
                     <strong class="me-auto ms-2">${ toastTitle }</strong>
@@ -420,6 +458,7 @@
 
     <!-- Bootstrap JS Bundle (includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     
     <!-- Load our custom Vue.js app -->
     <script src="{{ url_for('static', path='js/app.js') }}"></script>
