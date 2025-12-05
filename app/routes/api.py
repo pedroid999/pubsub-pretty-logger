@@ -509,7 +509,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     try:
         # Process any status updates
         status_count = 0
-        while not message_queues[client_id]["status"].empty():
+        while client_id in message_queues and not message_queues[client_id]["status"].empty():
             status = message_queues[client_id]["status"].get_nowait()
             print(f"Initial status update for {client_id}: {status}")
             await manager.send_message({"type": "status", "data": status}, websocket)
@@ -520,6 +520,11 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         # Main message loop
         message_count = 0
         while True:
+            # Check if client has been disconnected externally (via API endpoint)
+            if client_id not in message_queues:
+                print(f"Client {client_id} was disconnected externally, closing WebSocket")
+                break
+            
             try:
                 # Non-blocking check for new messages
                 if not message_queues[client_id]["messages"].empty():
